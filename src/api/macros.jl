@@ -252,11 +252,12 @@ macro wfile(args...)
     local start_idx
 
     if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing)
-        file_name_expr = args[1]
+        # Special handling for literal nothing
+        file_name_expr = args[1] === nothing ? :(nothing) : args[1]
         file_path_expr = args[2]
         start_idx = 3
     else
-        file_name_expr = nothing
+        file_name_expr = :(nothing)  # Use quoted nothing for consistency
         file_path_expr = args[1]
         start_idx = 2
     end
@@ -268,12 +269,6 @@ macro wfile(args...)
             $(esc(file_path_expr))
         catch e
             throw(ArgumentError("Invalid file path expression: $(e)"))
-        end
-
-        local file_name = try
-            $(esc(file_name_expr))
-        catch e
-            nothing
         end
 
         # Validate file path after escaping
@@ -288,6 +283,9 @@ macro wfile(args...)
         if !isfile(file_path)
             throw(ArgumentError("File does not exist: $file_path"))
         end
+
+        # Handle file name - no need to escape nothing literal
+        local file_name = $(file_name_expr === :(nothing) ? :(nothing) : esc(file_name_expr))
 
         # Use basename if no name provided
         local name = if isnothing(file_name)
