@@ -6,9 +6,9 @@ using UUIDs
 include("TestUtils.jl")
 using .TestUtils
 
-# Override WeaveLoggers API functions with mock implementations
-Core.eval(WeaveLoggers.Calls, :(start_call = $TestUtils.MockAPI.start_call))
-Core.eval(WeaveLoggers.Calls, :(end_call = $TestUtils.MockAPI.end_call))
+# Create local versions of the API functions that delegate to our mocks
+const start_call = TestUtils.MockAPI.start_call
+const end_call = TestUtils.MockAPI.end_call
 
 @testset "WeaveLoggers.@w Macro Tests" begin
     @testset "Basic Functionality" begin
