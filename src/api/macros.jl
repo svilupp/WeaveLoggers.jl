@@ -241,13 +241,13 @@ Log a file to Weights & Biases Weave service.
 ```
 """
 macro wfile(args...)
-    # Debug output
-    @info "Macro args" typeof(args[1]) args[1]
-
     # Extract file name/path and validate
     if length(args) < 1
-        throw(ArgumentError("@wfile requires at least a file path"))
+        throw(ArgumentError("@wfile requires at least a file path argument"))
     end
+
+    # Debug output (after length check)
+    @info "Macro args" typeof(args[1]) args[1]
 
     # Handle optional file name
     local file_name_expr

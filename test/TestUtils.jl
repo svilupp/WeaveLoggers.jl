@@ -73,10 +73,13 @@ module MockAPI
     end
 
     # Start call with both positional and keyword arguments
-    function start_call(; model::String="", inputs::Union{Dict{String,String},Nothing}=nothing, metadata::Union{Dict{String,String},Nothing}=nothing)
+    function start_call(; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
+                       started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
+                       attributes::Union{Dict,Nothing}=nothing, model::String="",
+                       metadata::Union{Dict,Nothing}=nothing)
         id = string(uuid4())
-        trace_id = string(uuid4())
-        started_at = format_iso8601(now(UTC))
+        trace_id = isnothing(trace_id) ? string(uuid4()) : trace_id
+        started_at = isnothing(started_at) ? format_iso8601(now(UTC)) : started_at
 
         call_data = Dict{String,Any}(
             "id" => id,
@@ -84,11 +87,18 @@ module MockAPI
             "started_at" => started_at
         )
 
+        # Support both old and new parameter sets
+        if !isnothing(op_name)
+            call_data["op_name"] = op_name
+        end
         if !isempty(model)
             call_data["model"] = model
         end
         if !isnothing(inputs)
             call_data["inputs"] = inputs
+        end
+        if !isnothing(attributes)
+            call_data["attributes"] = attributes
         end
         if !isnothing(metadata)
             call_data["metadata"] = metadata
