@@ -44,6 +44,9 @@ module MockAPI
     # Mock weave_api function to bypass actual API calls
     function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
                       base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
+        # Mock API key for testing - bypass the API key check entirely
+        ENV["WANDB_API_KEY"] = "mock-api-key-for-testing"
+
         # For start_call endpoint
         if endpoint == "/call/start"
             return start_call(
