@@ -48,7 +48,7 @@ function WeaveLoggers.create_table(name::String, data::Symbol, tags::Vector{Symb
     throw(ArgumentError("Data must be Tables.jl-compatible"))
 end
 
-function WeaveLoggers.Files.create_file(name::String, path::String, tags::Vector{Symbol}=Symbol[])
+function WeaveLoggers.Files.create_file(name::String, path::Union{String,Nothing}, tags::Vector{Symbol}=Symbol[])
     TestUtils.MockAPI.create_file(name, path, tags)
 end
 
