@@ -94,6 +94,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     )
 
     try
+        @info "Sending request to start call" url="$WEAVE_API_BASE_URL/call/start" body=body
         response = HTTP.post(
             "$WEAVE_API_BASE_URL/call/start",
             get_auth_headers(api_key),
@@ -101,9 +102,14 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
         )
 
         result = JSON3.read(response.body)
+        @info "Call started successfully" response_status=response.status response_body=String(response.body)
         return call_id
     catch e
-        @error "Failed to start call" exception=e
+        if e isa HTTP.ExceptionRequest.StatusError
+            @error "Failed to start call" status=e.status response_body=String(e.response.body) exception=e
+        else
+            @error "Failed to start call" exception=e
+        end
         rethrow(e)
     end
 end
@@ -128,14 +134,20 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
     end
 
     try
+        @info "Sending request to end call" url="$WEAVE_API_BASE_URL/call/$call_id/end" body=body
         response = HTTP.post(
             "$WEAVE_API_BASE_URL/call/$call_id/end",
             get_auth_headers(api_key),
             JSON3.write(body)
         )
+        @info "Call ended successfully" response_status=response.status response_body=String(response.body)
         return response.status == 200
     catch e
-        @error "Failed to end call" exception=e
+        if e isa HTTP.ExceptionRequest.StatusError
+            @error "Failed to end call" status=e.status response_body=String(e.response.body) exception=e
+        else
+            @error "Failed to end call" exception=e
+        end
         rethrow(e)
     end
 end
@@ -149,15 +161,20 @@ function read_call(call_id::String)
     api_key = ENV["WANDB_API_KEY"]
 
     try
+        @info "Sending request to read call" url="$WEAVE_API_BASE_URL/call/$call_id"
         response = HTTP.get(
             "$WEAVE_API_BASE_URL/call/$call_id",
             get_auth_headers(api_key)
         )
+        @info "Call read successfully" response_status=response.status response_body=String(response.body)
         return JSON3.read(response.body)
     catch e
-        @error "Failed to read call" exception=e
+        if e isa HTTP.ExceptionRequest.StatusError
+            @error "Failed to read call" status=e.status response_body=String(e.response.body) exception=e
+        else
+            @error "Failed to read call" exception=e
+        end
         rethrow(e)
     end
-end
 
 end

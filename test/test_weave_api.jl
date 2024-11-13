@@ -8,23 +8,25 @@ using JSON3
     @test test_weave_api() == true
 
     # Test complete call workflow
-    test_metadata = Dict(
+    test_metadata = Dict{String,String}(
         "project_id" => "test-project",
         "display_name" => "Test Call",
         "wb_user_id" => "test-user",
         "wb_run_id" => "test-run",
-        "test" => true
+        "test" => "true"
     )
 
     # Start a call with all required fields
+    @info "Starting call with test data..."
     call_id = start_call(
         model="test-model",
-        inputs=Dict(
+        inputs=Dict{String,String}(
             "prompt" => "Hello, World!",
-            "temperature" => 0.7
+            "temperature" => "0.7"
         ),
         metadata=test_metadata
     )
+    @info "Call started" call_id=call_id
 
     # Verify call_id
     @test !isnothing(call_id)
