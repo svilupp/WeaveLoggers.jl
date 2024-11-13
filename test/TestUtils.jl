@@ -174,7 +174,7 @@ module MockAPI
         # Convert empty vector to Symbol[] to avoid type issues
         actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
         file_data = Dict{String,Any}(
-            "name" => name,
+            "name" => name == "nothing" ? basename(path) : name,
             "path" => path,
             "tags" => actual_tags
         )
