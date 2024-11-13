@@ -148,6 +148,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     converted_inputs = Dict{String,Any}(k => convert_input_value(v) for (k, v) in inputs)
 
     # Ensure all required fields are present with proper types
+    # Extract specific fields from metadata, everything else goes to attributes
     body = Dict(
         "start" => Dict{String,Any}(
             "project_id" => get(metadata, "project_id", "default"),
@@ -157,9 +158,13 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "trace_id" => get(metadata, "trace_id", call_id),
             "parent_id" => get(metadata, "parent_id", ""),
             "started_at" => format_iso8601(now(UTC)),
-            "attributes" => Dict{String,Any}(string(k) => v for (k,v) in metadata),
             "inputs" => converted_inputs,
-            "wb_run_id" => get(metadata, "wb_run_id", "default-run")
+            "wb_run_id" => get(metadata, "wb_run_id", "default-run"),
+            # Only include non-special fields in attributes
+            "attributes" => Dict{String,Any}(
+                k => v for (k,v) in metadata
+                if !in(k, ["project_id", "display_name", "trace_id", "parent_id", "wb_run_id"])
+            )
         )
     )
 
