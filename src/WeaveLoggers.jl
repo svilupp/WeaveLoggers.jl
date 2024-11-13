@@ -85,7 +85,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "display_name" => get(metadata, "display_name", model),
             "trace_id" => get(metadata, "trace_id", call_id),
             "parent_id" => get(metadata, "parent_id", nothing),
-            "started_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:MM:SS.sssZ"),
+            "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ"),
             "attributes" => metadata,
             "inputs" => inputs,
             "wb_user_id" => get(metadata, "wb_user_id", nothing),
@@ -126,7 +126,7 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
     body = Dict(
         "end" => Dict(
             "outputs" => outputs,
-            "ended_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:MM:SS.sssZ")
+            "ended_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ")
         )
     )
     if !isnothing(error)
@@ -176,5 +176,6 @@ function read_call(call_id::String)
         end
         rethrow(e)
     end
-
 end
+
+end # module
