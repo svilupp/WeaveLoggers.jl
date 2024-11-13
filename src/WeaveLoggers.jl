@@ -54,10 +54,21 @@ function test_weave_api()
     end
 
     try
-        # Test API endpoint with a simple GET request to /call
-        response = HTTP.get(
-            "$WEAVE_API_BASE_URL/call",
-            get_auth_headers(api_key)
+        # Test API endpoint with a simple call start request
+        test_body = Dict(
+            "start" => Dict(
+                "project_id" => "test",
+                "id" => generate_uuid(),
+                "op_name" => "test_connection",
+                "display_name" => "API Test",
+                "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ")
+            )
+        )
+
+        response = HTTP.post(
+            "$WEAVE_API_BASE_URL/call/start",
+            get_auth_headers(api_key),
+            JSON3.write(test_body)
         )
         return response.status == 200
     catch e
@@ -161,9 +172,9 @@ function read_call(call_id::String)
     api_key = ENV["WANDB_API_KEY"]
 
     try
-        @info "Sending request to read call" url="$WEAVE_API_BASE_URL/call/$call_id"
+        @info "Sending request to read call" url="$WEAVE_API_BASE_URL/call/read?id=$call_id"
         response = HTTP.get(
-            "$WEAVE_API_BASE_URL/call/$call_id",
+            "$WEAVE_API_BASE_URL/call/read?id=$call_id",
             get_auth_headers(api_key)
         )
         @info "Call read successfully" response_status=response.status response_body=String(response.body)
