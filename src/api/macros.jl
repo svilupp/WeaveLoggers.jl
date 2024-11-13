@@ -187,21 +187,22 @@ macro wtable(args...)
         throw(ArgumentError("@wtable requires at least a table name and data object"))
     end
 
-    table_name = args[1]
-    data_expr = args[2]
-    tags = [QuoteNode(arg) for arg in args[3:end] if arg isa Symbol]
-
-    # If no explicit name provided, use variable name
-    if !isa(table_name, String)
-        table_name = string(data_expr)
+    # Handle table_name - ensure it's a string
+    table_name = if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
+        args[1]
+    else
+        string(args[1])
     end
+
+    data_expr = args[2]
+    tags = [arg for arg in args[3:end] if arg isa QuoteNode || (arg isa Expr && arg.head == :quote)]
 
     return quote
         local data = $(esc(data_expr))
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
-        create_table($table_name, data, $(tags...))
+        create_table($(esc(table_name)), data, $(map(esc, tags)...))
     end
 end
 

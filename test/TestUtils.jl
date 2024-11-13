@@ -100,6 +100,9 @@ module MockAPI
     end
 
     function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="", outputs::Union{Nothing,Dict{String,Any}}=nothing, attributes::Dict{String,Any}=Dict{String,Any}())
+        # Add a small sleep to ensure measurable time difference
+        sleep(0.001)  # 1ms sleep
+
         ended_at = isempty(ended_at) ? format_iso8601(now(UTC)) : ended_at
 
         call_data = Dict{String,Any}(
