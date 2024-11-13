@@ -11,22 +11,29 @@ using JSON3
     test_metadata = Dict{String,String}(
         "project_id" => "test-project",
         "display_name" => "Test Call",
-        "wb_user_id" => "test-user",
         "wb_run_id" => "test-run",
         "test" => "true"
     )
 
     # Start a call with all required fields
     @info "Starting call with test data..."
-    call_id = start_call(
-        model="test-model",
-        inputs=Dict{String,String}(
-            "prompt" => "Hello, World!",
-            "temperature" => "0.7"
-        ),
-        metadata=test_metadata
-    )
-    @info "Call started" call_id=call_id
+    try
+        call_id = start_call(
+            model="test-model",
+            inputs=Dict{String,String}(
+                "prompt" => "Hello, World!",
+                "temperature" => "0.7"
+            ),
+            metadata=test_metadata
+        )
+        @info "Call started successfully" call_id=call_id
+    catch e
+        @error "Failed to start call" exception=e
+        if e isa HTTP.ExceptionRequest.StatusError
+            @error "API Error Details" status=e.status response=String(e.response.body)
+        end
+        rethrow(e)
+    end
 
     # Verify call_id
     @test !isnothing(call_id)
