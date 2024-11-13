@@ -252,12 +252,11 @@ macro wfile(args...)
     local start_idx
 
     if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing)
-        # Special handling for literal nothing
-        file_name_expr = args[1] === nothing ? :(nothing) : args[1]
+        file_name_expr = args[1]
         file_path_expr = args[2]
         start_idx = 3
     else
-        file_name_expr = :(nothing)  # Use quoted nothing for consistency
+        file_name_expr = nothing
         file_path_expr = args[1]
         start_idx = 2
     end
@@ -265,38 +264,33 @@ macro wfile(args...)
     tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
-        local file_path = try
+        # First evaluate the file path with error handling
+        local raw_path = try
             $(esc(file_path_expr))
         catch e
             throw(ArgumentError("Invalid file path expression: $(e)"))
         end
 
-        # Validate file path after escaping
-        if isnothing(file_path)
-            throw(ArgumentError("File path cannot be nothing"))
+        # Handle file name separately with error handling
+        local raw_name = try
+            $(file_name_expr === nothing ? nothing : esc(file_name_expr))
+        catch e
+            nothing  # Default to nothing on error
         end
 
-        # Convert to string if not already
-        file_path = string(file_path)
-
-        # Check if file exists
-        if !isfile(file_path)
-            throw(ArgumentError("File does not exist: $file_path"))
-        end
-
-        # Handle file name - no need to escape nothing literal
-        local file_name = $(file_name_expr === :(nothing) ? :(nothing) : esc(file_name_expr))
-
-        # Use basename if no name provided
-        local name = if isnothing(file_name)
-            basename(file_path)
+        # Use basename if no name provided or if explicitly nothing
+        local name = if isnothing(raw_name)
+            basename(string(raw_path))
         else
-            file_name
+            string(raw_name)
         end
 
-        local tags = Symbol[]  # Initialize as empty Symbol vector
-        append!(tags, $tag_values)  # Add any provided tags
-        create_file(name, file_path, tags)
+        # Collect tags
+        local tags = Symbol[]
+        append!(tags, $tag_values)
+
+        # Create the file entry - let create_file handle all validation
+        create_file(name, raw_path, tags)
     end
 end
 

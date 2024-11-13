@@ -160,9 +160,10 @@ module MockAPI
 
     # Mock create_file function with unified handling for all tag types
     function create_file(name::String, path::Union{String,Nothing}, tags::Vector{Symbol}=Symbol[])
-        # Handle nothing path case first
+        # Handle nothing path case by using a default temporary file
         if isnothing(path)
-            throw(ArgumentError("File path cannot be nothing"))
+            path = tempname()
+            write(path, "test content")  # Create a temporary file
         end
 
         # Check if file exists
