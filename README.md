@@ -1,0 +1,6 @@
+# WeaveLoggers [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/WeaveLoggers.jl/stable/) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/WeaveLoggers.jl/dev/) [![Build Status](https://github.com/svilupp/WeaveLoggers.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/WeaveLoggers.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Coverage](https://codecov.io/gh/svilupp/WeaveLoggers.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/WeaveLoggers.jl) [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
+
+Enable seamless logging into Weights & Biases' Weave for easy inspection of function calls in AI applications, with a particular focus on large language model interactions. This unofficial, opinionated package provides a Julia-centric approach that doesn't adhere to the Python Weave API. The goal is to have seamless integration with PromptingTools.jl to enable rapid prototyping and data-driven development.
+
+Based on docs: https://weave-docs.wandb.ai/reference/service-api/call-start-call-start-post/

@@ -1,0 +1,15 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+/Manifest.toml
+/docs/Manifest.toml
+/docs/build/
+
+**/.DS_Store
+**/.vscode
+
+# exclude local data
+**/datasets
+
+# exclude scratch files
+**/_*
