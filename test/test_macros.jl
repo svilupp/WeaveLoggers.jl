@@ -99,8 +99,7 @@ function end_call(; kwargs...)
 end
 
 @testset "WeaveLoggers.@w Macro Tests" begin
-    # Setup test data
-    test_data = setup_test_data()
+    let test_data = setup_test_data()
 
     @testset "Basic Functionality" begin
         # Reset mock results
@@ -216,9 +215,6 @@ end
     end
 
     @testset "Complex Input Types" begin
-        # Setup test data for this test set
-        local test_data = setup_test_data()
-
         # Reset mock results
         empty!(mock_results.start_calls)
         empty!(mock_results.end_calls)
@@ -254,9 +250,6 @@ end
     end
 
     @testset "Additional Time Measurement Tests" begin
-        # Setup test data for this test set
-        local test_data = setup_test_data()
-
         # Reset mock results
         empty!(mock_results.start_calls)
         empty!(mock_results.end_calls)
@@ -292,9 +285,6 @@ end
     end
 
     @testset "Edge Cases" begin
-        # Setup test data for this test set
-        local test_data = setup_test_data()
-
         # Reset mock results
         empty!(mock_results.start_calls)
         empty!(mock_results.end_calls)
@@ -370,4 +360,5 @@ end
         concurrent_calls = filter(call -> startswith(call["op_name"], "concurrent_"), mock_results.start_calls)
         @test length(concurrent_calls) == 10
     end
+    end # end let block
 end
