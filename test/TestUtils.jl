@@ -29,10 +29,17 @@ end
 mutable struct MockAPIResults
     start_calls::Vector{Dict{String,Any}}
     end_calls::Vector{Dict{String,Any}}
+    table_calls::Vector{Dict{String,Any}}
+    file_calls::Vector{Dict{String,Any}}
 end
 
 # Initialize mock results with explicit type parameters
-const mock_results = MockAPIResults(Vector{Dict{String,Any}}(), Vector{Dict{String,Any}}())
+const mock_results = MockAPIResults(
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}()
+)
 
 # Mock API Module
 module MockAPI
