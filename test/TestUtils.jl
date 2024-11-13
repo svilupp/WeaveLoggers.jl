@@ -131,49 +131,37 @@ module MockAPI
         return call_data
     end
 
-    # Mock create_table function
+    # Mock create_table function with unified handling for all table types
+    function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
+        # Check Tables.jl compatibility
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
+
+        table_data = Dict{String,Any}(
+            "name" => name,
+            "data" => data,
+            "tags" => tags
+        )
+        push!(mock_results.table_calls, table_data)
+        return table_data
+    end
+
+    # Convenience method for variadic tags
     function create_table(name::String, data::Any, tags::Symbol...)
-        # Check Tables.jl compatibility
-        if !Tables.istable(data)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
-        end
-        table_data = Dict{String,Any}(
-            "name" => name,
-            "data" => data,
-            "tags" => collect(tags)
-        )
-        push!(mock_results.table_calls, table_data)
-        return table_data
+        create_table(name, data, collect(tags))
     end
 
-    # Add method for Vector{Symbol} tags
-    function create_table(name::String, data::Any, tags::Vector{T}=Symbol[]) where {T}
-        # Check Tables.jl compatibility
-        if !Tables.istable(data)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
+    # Method for keyword arguments
+    function create_table(name::String, data::Any; tags::Union{Vector{Symbol},Symbol,Nothing}=nothing)
+        actual_tags = if isnothing(tags)
+            Symbol[]
+        elseif tags isa Symbol
+            [tags]
+        else
+            convert(Vector{Symbol}, tags)
         end
-        # Convert empty vector to Symbol[] to avoid type issues
-        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
-        table_data = Dict{String,Any}(
-            "name" => name,
-            "data" => data,
-            "tags" => actual_tags
-        )
-        push!(mock_results.table_calls, table_data)
-        return table_data
-    end
-
-    # Add specific method for DataFrames
-    function create_table(name::String, data::DataFrame, tags::Vector{T}=Symbol[]) where {T}
-        # Convert empty vector to Symbol[] to avoid type issues
-        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
-        table_data = Dict{String,Any}(
-            "name" => name,
-            "data" => data,
-            "tags" => actual_tags
-        )
-        push!(mock_results.table_calls, table_data)
-        return table_data
+        create_table(name, data, actual_tags)
     end
 
     # Mock create_file function
