@@ -99,8 +99,6 @@ function end_call(; kwargs...)
 end
 
 @testset "WeaveLoggers.@w Macro Tests" begin
-    let test_data = setup_test_data()
-
     @testset "Basic Functionality" begin
         # Reset mock results
         empty!(mock_results.start_calls)
@@ -215,18 +213,20 @@ end
     end
 
     @testset "Complex Input Types" begin
-        # Reset mock results
-        empty!(mock_results.start_calls)
-        empty!(mock_results.end_calls)
+        let test_data = setup_test_data()
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
 
-        # Test with custom type
-        result = @w "custom_type" string(test_data.test_obj)
-        @test length(mock_results.start_calls) == 1
-        @test length(mock_results.end_calls) == 1
+            # Test with custom type
+            result = @w "custom_type" string(test_data.test_obj)
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
-        start_call = mock_results.start_calls[1]
-        @test start_call["inputs"]["types"] == [TestType]
-        @test start_call["op_name"] == "custom_type"
+            start_call = mock_results.start_calls[1]
+            @test start_call["inputs"]["types"] == [TestType]
+            @test start_call["op_name"] == "custom_type"
+        end
     end
 
     @testset "Nested Function Calls" begin
@@ -250,64 +250,68 @@ end
     end
 
     @testset "Additional Time Measurement Tests" begin
-        # Reset mock results
-        empty!(mock_results.start_calls)
-        empty!(mock_results.end_calls)
+        let test_data = setup_test_data()
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
 
-        # Test quick operation timing precision
-        result = @w "quick_op" sum([1,2,3])
-        start_call = mock_results.start_calls[1]
-        end_call = mock_results.end_calls[1]
+            # Test quick operation timing precision
+            result = @w "quick_op" sum([1,2,3])
+            start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
 
-        # Parse timestamps with millisecond precision
-        start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-        end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-        duration_ms = Dates.value(end_time - start_time)
+            # Parse timestamps with millisecond precision
+            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
+            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
+            duration_ms = Dates.value(end_time - start_time)
 
-        # Quick operation should take less than 100ms
-        @test duration_ms < 100
+            # Quick operation should take less than 100ms
+            @test duration_ms < 100
 
-        # Test long operation timing
-        empty!(mock_results.start_calls)
-        empty!(mock_results.end_calls)
+            # Test long operation timing
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
 
-        # Use pre-defined large array for longer operation
-        result = @w "long_op" sum(test_data.large_array)
-        start_call = mock_results.start_calls[1]
-        end_call = mock_results.end_calls[1]
+            # Use pre-defined large array for longer operation
+            result = @w "long_op" sum(test_data.large_array)
+            start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
 
-        start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-        end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-        duration_ms = Dates.value(end_time - start_time)
+            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
+            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
+            duration_ms = Dates.value(end_time - start_time)
 
-        # Long operation should take measurable time
-        @test duration_ms > 0
+            # Long operation should take measurable time
+            @test duration_ms > 0
+        end
     end
 
     @testset "Edge Cases" begin
-        # Reset mock results
-        empty!(mock_results.start_calls)
-        empty!(mock_results.end_calls)
+        let test_data = setup_test_data()
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
 
-        # Test empty input arguments
-        result = @w string()
-        @test result == ""
-        @test length(mock_results.start_calls) == 1
-        @test length(mock_results.end_calls) == 1
+            # Test empty input arguments
+            result = @w string()
+            @test result == ""
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
-        # Test very large inputs (using pre-defined large_string)
-        result = @w "large_input" length(test_data.large_string)
-        @test result == test_data.TEST_ARRAY_SIZE
+            # Test very large inputs (using pre-defined large_string)
+            result = @w "large_input" length(test_data.large_string)
+            @test result == test_data.TEST_ARRAY_SIZE
 
-        # Test unicode in strings
-        unicode_str = "Hello, 世界! 🌍"
-        result = @w "unicode" length(unicode_str)
-        @test result == 13
+            # Test unicode in strings
+            unicode_str = "Hello, 世界! 🌍"
+            result = @w "unicode" length(unicode_str)
+            @test result == 13
 
-        # Test special characters in operation names
-        result = @w "special!@#\$%^&*" identity(42)
-        start_call = mock_results.start_calls[end]
-        @test start_call["op_name"] == "special!@#\$%^&*"
+            # Test special characters in operation names
+            result = @w "special!@#\$%^&*" identity(42)
+            start_call = mock_results.start_calls[end]
+            @test start_call["op_name"] == "special!@#\$%^&*"
+        end
     end
 
     @testset "Performance" begin
@@ -360,5 +364,4 @@ end
         concurrent_calls = filter(call -> startswith(call["op_name"], "concurrent_"), mock_results.start_calls)
         @test length(concurrent_calls) == 10
     end
-    end # end let block
 end
