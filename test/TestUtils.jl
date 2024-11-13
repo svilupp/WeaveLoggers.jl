@@ -1,7 +1,7 @@
 module TestUtils
 
 using WeaveLoggers
-using Dates, UUIDs, Tables
+using Dates, UUIDs, Tables, DataFrames
 
 # Test data structures
 struct TestType
@@ -46,6 +46,7 @@ module MockAPI
     using UUIDs
     using Dates
     using WeaveLoggers: format_iso8601
+    using DataFrames, Tables
 
     # Mock weave_api function to bypass actual API calls
     function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
@@ -151,6 +152,19 @@ module MockAPI
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
+        # Convert empty vector to Symbol[] to avoid type issues
+        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
+        table_data = Dict{String,Any}(
+            "name" => name,
+            "data" => data,
+            "tags" => actual_tags
+        )
+        push!(mock_results.table_calls, table_data)
+        return table_data
+    end
+
+    # Add specific method for DataFrames
+    function create_table(name::String, data::DataFrame, tags::Vector{T}=Symbol[]) where {T}
         # Convert empty vector to Symbol[] to avoid type issues
         actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
         table_data = Dict{String,Any}(
