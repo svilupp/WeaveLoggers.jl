@@ -195,6 +195,9 @@ macro wtable(args...)
 
     if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string))
         # Explicit string name provided: @wtable "name" data
+        if length(args) < 2
+            throw(ArgumentError("@wtable requires a data object when table name is provided"))
+        end
         table_name_expr = args[1]
         data_expr = args[2]
         start_idx = 3
@@ -209,6 +212,10 @@ macro wtable(args...)
 
     return quote
         local data = $(esc(data_expr))
+        # Verify data is Tables.jl-compatible
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
         local table_name = $(esc(table_name_expr))
         local tags = Symbol[]
         append!(tags, $tag_values)
@@ -243,16 +250,10 @@ macro wfile(args...)
     local file_path_expr
     local start_idx
 
-    if length(args) >= 2
-        if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing
-            file_name_expr = args[1]
-            file_path_expr = args[2]
-            start_idx = 3
-        else
-            file_name_expr = nothing
-            file_path_expr = args[1]
-            start_idx = 2
-        end
+    if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing)
+        file_name_expr = args[1]
+        file_path_expr = args[2]
+        start_idx = 3
     else
         file_name_expr = nothing
         file_path_expr = args[1]
@@ -265,18 +266,13 @@ macro wfile(args...)
         local file_path = $(esc(file_path_expr))
         local file_name = $(esc(file_name_expr))
 
-        # Check if file path is valid
-        if isnothing(file_path)
-            throw(ArgumentError("File path cannot be nothing"))
-        end
-
-        # Check if file exists
+        # Check if file exists first
         if !isfile(file_path)
             throw(ArgumentError("File does not exist: $file_path"))
         end
 
         # Use basename if no name provided
-        local name = if file_name === nothing
+        local name = if isnothing(file_name)
             basename(file_path)
         else
             file_name
