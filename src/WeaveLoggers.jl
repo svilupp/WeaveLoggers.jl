@@ -100,8 +100,8 @@ function test_weave_api()
         # Test API endpoint with a simple call start request
         test_id = generate_uuid()
         test_body = Dict(
-            "start" => Dict(
-                "project_id" => "test-project",
+            "start" => Dict{String,Any}(
+                "project_id" => "anim-mina/test-project",
                 "id" => test_id,
                 "op_name" => "test_connection",
                 "display_name" => "API Test",
@@ -109,8 +109,8 @@ function test_weave_api()
                 "parent_id" => "",
                 "started_at" => format_iso8601(now(UTC)),
                 "attributes" => Dict{String,Any}(),
-                "inputs" => Dict{String,Any}(),
-                "wb_run_id" => "test-run"
+                "span_attributes" => Dict{String,Any}(),
+                "inputs" => Dict{String,Any}()
             )
         )
 
@@ -150,7 +150,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     # Ensure all required fields are present with proper types
     body = Dict(
         "start" => Dict{String,Any}(
-            "project_id" => get(metadata, "project_id", "devin/test-project"),  # Use entity/project format
+            "project_id" => get(metadata, "project_id", "anim-mina/test-project"),
             "id" => call_id,
             "op_name" => isempty(model) ? "default_operation" : model,
             "display_name" => get(metadata, "display_name", isempty(model) ? "Default Operation" : model),
@@ -158,12 +158,11 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "parent_id" => get(metadata, "parent_id", ""),
             "started_at" => format_iso8601(now(UTC)),
             "inputs" => converted_inputs,
-            "wb_run_id" => get(metadata, "wb_run_id", "default-run"),
-            "span_attributes" => Dict{String,Any}(),  # Required by API
+            "span_attributes" => Dict{String,Any}(),
             # Only include non-special fields in attributes
             "attributes" => Dict{String,Any}(
                 k => v for (k,v) in metadata
-                if !in(k, ["project_id", "display_name", "trace_id", "parent_id", "wb_run_id"])
+                if !in(k, ["project_id", "display_name", "trace_id", "parent_id"])
             )
         )
     )

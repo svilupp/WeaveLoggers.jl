@@ -9,9 +9,9 @@ using JSON3
 
     # Test complete call workflow
     test_metadata = Dict{String,String}(
-        "project_id" => "test-project",
+        "project_id" => "anim-mina/test-project",
         "display_name" => "Test Call",
-        "wb_run_id" => "test-run",
+        "wb_run_id" => "test-run-$(round(Int, time()))",
         "test" => "true"
     )
 
@@ -63,21 +63,27 @@ using JSON3
     @test !isnothing(call_data)
 
     # Verify the structure matches our implementation
-    @test haskey(call_data, :id)
-    @test call_data.id == call_id
-    @test haskey(call_data, :inputs)
-    @test call_data.inputs["prompt"] == "Hello, World!"
-    @test call_data.inputs["temperature"] == 0.7
+    @test haskey(call_data, "start")
+    @test call_data["start"]["id"] == call_id
+    @test haskey(call_data["start"], "inputs")
+    @test call_data["start"]["inputs"]["prompt"] == "Hello, World!"
+    @test call_data["start"]["inputs"]["temperature"] == 0.7
 
     # Verify metadata
-    @test haskey(call_data, :project_id)
-    @test call_data.project_id == test_metadata["project_id"]
-    @test haskey(call_data, :display_name)
-    @test call_data.display_name == test_metadata["display_name"]
+    @test haskey(call_data["start"], "project_id")
+    @test call_data["start"]["project_id"] == test_metadata["project_id"]
+    @test haskey(call_data["start"], "display_name")
+    @test call_data["start"]["display_name"] == test_metadata["display_name"]
 
     # Verify timestamps exist
-    @test haskey(call_data, :started_at)
-    @test haskey(call_data, :ended_at)
+    @test haskey(call_data["start"], "started_at")
+    @test haskey(call_data, "end")
+    @test haskey(call_data["end"], "ended_at")
+
+    # Verify outputs
+    @test haskey(call_data["end"], "outputs")
+    @test call_data["end"]["outputs"]["response"] == "Test response"
+    @test call_data["end"]["outputs"]["tokens"] == 10
 
     # Test error handling
     @test_throws Exception read_call("nonexistent-id")
