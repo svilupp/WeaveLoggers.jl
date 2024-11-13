@@ -78,8 +78,8 @@ macro w(args...)
         local start_time = now()
 
         # Prepare input logging
-        local input_args = Any[$(map(arg -> :($arg), expr.args[2:end])...)]
-        local input_types = Type[$(map(arg -> :(typeof($arg)), expr.args[2:end])...)]
+        local input_args = Any[$(map(arg -> :($(esc(arg))), expr.args[2:end])...)]
+        local input_types = Type[$(map(arg -> :(typeof($(esc(arg)))), expr.args[2:end])...)]
 
         # Start the call
         local call_id = $call_id
