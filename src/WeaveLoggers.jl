@@ -148,10 +148,9 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     converted_inputs = Dict{String,Any}(k => convert_input_value(v) for (k, v) in inputs)
 
     # Ensure all required fields are present with proper types
-    # Extract specific fields from metadata, everything else goes to attributes
     body = Dict(
         "start" => Dict{String,Any}(
-            "project_id" => get(metadata, "project_id", "default"),
+            "project_id" => get(metadata, "project_id", "devin/test-project"),  # Use entity/project format
             "id" => call_id,
             "op_name" => isempty(model) ? "default_operation" : model,
             "display_name" => get(metadata, "display_name", isempty(model) ? "Default Operation" : model),
@@ -160,6 +159,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "started_at" => format_iso8601(now(UTC)),
             "inputs" => converted_inputs,
             "wb_run_id" => get(metadata, "wb_run_id", "default-run"),
+            "span_attributes" => Dict{String,Any}(),  # Required by API
             # Only include non-special fields in attributes
             "attributes" => Dict{String,Any}(
                 k => v for (k,v) in metadata
