@@ -67,13 +67,12 @@ module MockAPI
     end
 
     # Start call with both positional and keyword arguments
-    function start_call(op_name::String; inputs=nothing, display_name=nothing, attributes=nothing)
-        call_id = string(uuid4())
-        trace_id = string(uuid4())
-        started_at = format_iso8601(now(UTC))
+    function start_call(id::String; trace_id::String="", op_name::String="", started_at::String="", inputs=nothing, display_name=nothing, attributes=nothing)
+        started_at = isempty(started_at) ? format_iso8601(now(UTC)) : started_at
+        trace_id = isempty(trace_id) ? string(uuid4()) : trace_id
 
         call_data = Dict{String,Any}(
-            "id" => call_id,
+            "id" => id,
             "trace_id" => trace_id,
             "op_name" => op_name,
             "started_at" => started_at
@@ -93,15 +92,21 @@ module MockAPI
         return call_data
     end
 
-    function end_call(call_id::String; outputs::Dict{String,Any}=Dict{String,Any}(), error::Union{Nothing,Dict{String,Any}}=nothing)
+    function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="", outputs::Union{Nothing,Dict{String,Any}}=nothing, attributes::Dict{String,Any}=Dict{String,Any}())
+        ended_at = isempty(ended_at) ? format_iso8601(now(UTC)) : ended_at
+
         call_data = Dict{String,Any}(
-            "id" => call_id,
-            "outputs" => outputs,
-            "ended_at" => format_iso8601(now(UTC))
+            "id" => id,
+            "ended_at" => ended_at,
+            "attributes" => attributes
         )
 
         if !isnothing(error)
-            call_data["error"] = error
+            call_data["error"] = error isa Dict ? error : Dict{String,Any}("message" => error)
+        end
+
+        if !isnothing(outputs)
+            call_data["outputs"] = outputs
         end
 
         push!(mock_results.end_calls, call_data)
