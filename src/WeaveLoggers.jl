@@ -35,6 +35,30 @@ function generate_uuid()
     return string(uuid4())
 end
 
+"""
+    convert_input_value(value::String)
+
+Convert string input values to appropriate types (e.g., numbers).
+"""
+function convert_input_value(value::String)
+    # Try to convert to number if possible
+    try
+        # First try as integer
+        parsed = tryparse(Int, value)
+        if !isnothing(parsed)
+            return parsed
+        end
+        # Then try as float
+        parsed = tryparse(Float64, value)
+        if !isnothing(parsed)
+            return parsed
+        end
+    catch
+        # If conversion fails, return original string
+    end
+    return value
+end
+
 # Function that uses PromptingTools for logging
 function weave_log(message::String)
     # Basic implementation using PromptingTools
@@ -87,6 +111,9 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     api_key = ENV["WANDB_API_KEY"]
     call_id = generate_uuid()
 
+    # Convert string values in inputs to appropriate types
+    converted_inputs = Dict(k => convert_input_value(v) for (k, v) in inputs)
+
     # Prepare request body according to API specification
     body = Dict(
         "start" => Dict(
@@ -98,7 +125,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "parent_id" => get(metadata, "parent_id", nothing),
             "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ"),
             "attributes" => metadata,
-            "inputs" => inputs,
+            "inputs" => converted_inputs,
             "wb_user_id" => get(metadata, "wb_user_id", nothing),
             "wb_run_id" => get(metadata, "wb_run_id", nothing)
         )
