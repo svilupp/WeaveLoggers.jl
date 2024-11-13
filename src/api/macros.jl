@@ -195,14 +195,14 @@ macro wtable(args...)
     end
 
     data_expr = args[2]
-    tags = [arg for arg in args[3:end] if arg isa QuoteNode || (arg isa Expr && arg.head == :quote)]
+    tags = [arg.value for arg in args[3:end] if arg isa QuoteNode]
 
     return quote
         local data = $(esc(data_expr))
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
-        create_table($(esc(table_name)), data, $(map(esc, tags)...))
+        create_table($(esc(table_name)), data, $(esc(tags)))
     end
 end
 

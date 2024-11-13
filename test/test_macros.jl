@@ -317,10 +317,20 @@ end
         @test_throws ArgumentError @wtable "invalid" non_table
 
         # Test with missing arguments - this should throw an ArgumentError
-        @test_throws ArgumentError eval(:(WeaveLoggers.@wtable))
-        @test_throws ArgumentError eval(:(WeaveLoggers.@wtable "missing_data"))
+        @test try
+            eval(:(WeaveLoggers.@wtable))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
+
+        @test try
+            eval(:(WeaveLoggers.@wtable "missing_data"))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
     end
-end
 
 @testset "WeaveLoggers.@wfile Macro Tests" begin
     @testset "Basic File Functionality" begin
@@ -393,6 +403,10 @@ end
         @test_throws ArgumentError @wfile "error" non_existent
 
         # Test with missing arguments
-        @test_throws ArgumentError @wfile
+        @test try
+            eval(:(WeaveLoggers.@wfile))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
     end
-end
