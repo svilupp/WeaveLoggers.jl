@@ -77,12 +77,14 @@ module MockAPI
                        started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
                        attributes::Union{Dict,Nothing}=nothing, model::String="",
                        metadata::Union{Dict,Nothing}=nothing)
+        # Store the full result in mock_results but return only the ID
         result = start_call(; trace_id=isnothing(trace_id) ? id : trace_id,
                              op_name=op_name, started_at=started_at,
                              inputs=inputs, attributes=attributes,
                              model=model, metadata=metadata)
         result["id"] = id  # Override the generated ID with the provided one
-        return result
+        push!(mock_results.start_calls, result)
+        return id  # Return only the ID string
     end
 
     function start_call(; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
