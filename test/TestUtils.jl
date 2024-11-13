@@ -5,14 +5,15 @@ using Dates
 
 # Test data structures
 struct TestType
-    x::Int
-    y::String
+    value::Int
 end
+
+Base.string(t::TestType) = "TestType($(t.value))"
 
 # Test setup function to initialize all test data
 function setup_test_data()
     TEST_ARRAY_SIZE = 1_000_000
-    test_obj = TestType(42, "hello")
+    test_obj = TestType(42)
     large_array = rand(TEST_ARRAY_SIZE)
     large_string = repeat("a", TEST_ARRAY_SIZE)
     return (
@@ -38,8 +39,8 @@ module MockAPI
     using UUIDs
     using Dates
 
-    # Single method for start_call with keyword arguments
-    function start_call(; op_name::String="", inputs::Dict{String,Any}=Dict{String,Any}(), attributes::Dict{String,Any}=Dict{String,Any}())
+    # Start call with both positional and keyword arguments
+    function start_call(op_name::String; inputs=nothing, display_name=nothing, attributes=nothing)
         call_id = string(uuid4())
         trace_id = string(uuid4())
         started_at = WeaveLoggers.format_iso8601(now(UTC))
@@ -48,10 +49,18 @@ module MockAPI
             "id" => call_id,
             "trace_id" => trace_id,
             "op_name" => op_name,
-            "started_at" => started_at,
-            "inputs" => inputs,
-            "attributes" => attributes
+            "started_at" => started_at
         )
+
+        if !isnothing(inputs)
+            call_data["inputs"] = inputs
+        end
+        if !isnothing(display_name)
+            call_data["display_name"] = display_name
+        end
+        if !isnothing(attributes)
+            call_data["attributes"] = attributes
+        end
 
         push!(mock_results.start_calls, call_data)
         return call_data  # Return full data for macro to use
