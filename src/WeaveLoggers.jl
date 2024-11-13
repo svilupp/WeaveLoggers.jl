@@ -101,16 +101,15 @@ function test_weave_api()
         test_id = generate_uuid()
         test_body = Dict(
             "start" => Dict(
-                "project_id" => "test",
+                "project_id" => "test-project",
                 "id" => test_id,
                 "op_name" => "test_connection",
                 "display_name" => "API Test",
                 "trace_id" => test_id,
-                "parent_id" => nothing,
+                "parent_id" => "",
                 "started_at" => format_iso8601(now(UTC)),
                 "attributes" => Dict{String,Any}(),
                 "inputs" => Dict{String,Any}(),
-                "wb_user_id" => "test-user",
                 "wb_run_id" => "test-run"
             )
         )
@@ -156,11 +155,10 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "op_name" => isempty(model) ? "default_operation" : model,
             "display_name" => get(metadata, "display_name", isempty(model) ? "Default Operation" : model),
             "trace_id" => get(metadata, "trace_id", call_id),
-            "parent_id" => get(metadata, "parent_id", nothing),
+            "parent_id" => get(metadata, "parent_id", ""),
             "started_at" => format_iso8601(now(UTC)),
             "attributes" => Dict{String,Any}(string(k) => v for (k,v) in metadata),
             "inputs" => converted_inputs,
-            "wb_user_id" => get(metadata, "wb_user_id", "default-user"),
             "wb_run_id" => get(metadata, "wb_run_id", "default-run")
         )
     )
