@@ -25,8 +25,25 @@ function WeaveLoggers.Calls.end_call(id::String; kwargs...)
     TestUtils.MockAPI.end_call(id; kwargs...)
 end
 
-function WeaveLoggers.Tables.create_table(name::String, data; tags::Vector{Symbol}=Symbol[])
+function WeaveLoggers.create_table(name::String, data::DataFrame, tags::Vector{Symbol}=Symbol[])
     TestUtils.MockAPI.create_table(name, data, tags)
+end
+
+function WeaveLoggers.create_table(name::String, data::T, tags::Vector{Symbol}=Symbol[]) where {T}
+    if Tables.istable(data)
+        TestUtils.MockAPI.create_table(name, data, tags)
+    else
+        throw(ArgumentError("Data must be Tables.jl-compatible"))
+    end
+end
+
+# Convenience method for variadic tags
+function WeaveLoggers.create_table(name::String, data::Any, tags::Symbol...)
+    WeaveLoggers.create_table(name, data, collect(tags))
+end
+
+function WeaveLoggers.create_table(name::String, data::Symbol, tags::Vector{Symbol}=Symbol[])
+    throw(ArgumentError("Data must be Tables.jl-compatible"))
 end
 
 function WeaveLoggers.Files.create_file(name::String, path::String, tags::Vector{Symbol}=Symbol[])
