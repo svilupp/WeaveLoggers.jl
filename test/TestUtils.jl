@@ -77,13 +77,13 @@ module MockAPI
                        started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
                        attributes::Union{Dict,Nothing}=nothing, model::String="",
                        metadata::Union{Dict,Nothing}=nothing)
-        # Store the full result in mock_results but return only the ID
+        # Call the non-parameterized version and modify its result
         result = start_call(; trace_id=isnothing(trace_id) ? id : trace_id,
-                             op_name=op_name, started_at=started_at,
-                             inputs=inputs, attributes=attributes,
-                             model=model, metadata=metadata)
+                            op_name=op_name, started_at=started_at,
+                            inputs=inputs, attributes=attributes,
+                            model=model, metadata=metadata)
         result["id"] = id  # Override the generated ID with the provided one
-        push!(mock_results.start_calls, result)
+        # Note: We don't push to mock_results here as it's already done in the non-parameterized version
         return id  # Return only the ID string
     end
 
