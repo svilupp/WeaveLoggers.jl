@@ -52,6 +52,7 @@ TODO List of Tests:
 using Test
 using WeaveLoggers
 using Dates
+using Statistics
 
 # Test data structures
 struct TestType
@@ -67,20 +68,19 @@ end
 
 const mock_results = MockAPIResults([], [])
 
-# Mock API functions for testing
-function mock_start_call(; kwargs...)
+# Import WeaveLoggers API functions for mocking
+import WeaveLoggers.Calls: start_call, end_call
+
+# Define mock implementations
+function start_call(; kwargs...)
     push!(mock_results.start_calls, Dict{String,Any}(string(k) => v for (k,v) in kwargs))
     return Dict{String,Any}("status" => "started")
 end
 
-function mock_end_call(; kwargs...)
+function end_call(; kwargs...)
     push!(mock_results.end_calls, Dict{String,Any}(string(k) => v for (k,v) in kwargs))
     return Dict{String,Any}("status" => "completed")
 end
-
-# Replace WeaveLoggers API functions with mocks
-WeaveLoggers.Calls.start_call = mock_start_call
-WeaveLoggers.Calls.end_call = mock_end_call
 
 @testset "WeaveLoggers.@w Macro Tests" begin
     @testset "Basic Functionality" begin
