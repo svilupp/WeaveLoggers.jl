@@ -3,8 +3,7 @@ using WeaveLoggers
 using Dates
 using Statistics
 using UUIDs
-include("TestUtils.jl")
-using .TestUtils
+using .TestUtils  # Use TestUtils module that was included in runtests.jl
 
 # Create local versions of the API functions that delegate to our mocks
 const start_call = TestUtils.MockAPI.start_call
