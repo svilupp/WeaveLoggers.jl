@@ -22,7 +22,7 @@ using UUIDs
 export start_call, end_call, update_call, delete_call, read_call
 
 """
-    start_call(op_name::String; inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
+    start_call(op_name::String=""; id::String=string(uuid4()), trace_id::String=string(uuid4()), started_at::String=format_iso8601(now(UTC)), inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
 
 Start a new call in the Weave service.
 
@@ -46,9 +46,10 @@ call_id = start_call("test_operation",
 
 For more details, see: https://weave-docs.wandb.ai/reference/service-api/call-start-call-start-post
 """
-function start_call(op_name::String; inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
-    call_id = string(uuid4())
-    trace_id = string(uuid4())
+function start_call(op_name::String=""; id::String=string(uuid4()), trace_id::String=string(uuid4()), started_at::String=format_iso8601(now(UTC)), inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
+    # Use provided values or generate new ones if not provided
+    call_id = id
+    trace_id = trace_id  # Use provided trace_id
 
     body = Dict(
         "start" => Dict{String,Any}(
@@ -58,7 +59,7 @@ function start_call(op_name::String; inputs::Dict=Dict(), display_name::String="
             "display_name" => isempty(display_name) ? op_name : display_name,
             "trace_id" => trace_id,
             "parent_id" => nothing,
-            "started_at" => format_iso8601(now(UTC)),
+            "started_at" => started_at,
             "inputs" => inputs,
             "attributes" => attributes
         )
