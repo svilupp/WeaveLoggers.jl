@@ -67,6 +67,19 @@ function weave_log(message::String)
 end
 
 """
+    format_iso8601(dt::DateTime)
+
+Format a DateTime to ISO 8601 format with exactly three millisecond digits.
+"""
+function format_iso8601(dt::DateTime)
+    # Get milliseconds and ensure it's exactly 3 digits
+    ms = lpad(round(Int, Dates.value(Dates.Millisecond(dt)) % 1000), 3, '0')
+    # Format the rest of the datetime
+    base = Dates.format(dt, "yyyy-MM-dd\\THH:mm:ss")
+    return "$(base).$(ms)Z"
+end
+
+"""
     test_weave_api()
 
 Test the Weave API connection and authentication.
@@ -88,7 +101,7 @@ function test_weave_api()
                 "display_name" => "API Test",
                 "trace_id" => test_id,
                 "parent_id" => nothing,
-                "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
+                "started_at" => format_iso8601(now(UTC)),
                 "attributes" => Dict{String,Any}(),
                 "inputs" => Dict{String,Any}(),
                 "wb_user_id" => "test-user",
@@ -138,7 +151,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "display_name" => get(metadata, "display_name", isempty(model) ? "Default Operation" : model),
             "trace_id" => get(metadata, "trace_id", call_id),
             "parent_id" => get(metadata, "parent_id", nothing),
-            "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
+            "started_at" => format_iso8601(now(UTC)),
             "attributes" => Dict{String,Any}(string(k) => v for (k,v) in metadata),
             "inputs" => converted_inputs,
             "wb_user_id" => get(metadata, "wb_user_id", "default-user"),
@@ -179,7 +192,7 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
     body = Dict(
         "end" => Dict(
             "outputs" => outputs,
-            "ended_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ")
+            "ended_at" => format_iso8601(now(UTC))
         )
     )
     if !isnothing(error)
