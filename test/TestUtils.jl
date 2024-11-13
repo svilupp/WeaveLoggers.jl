@@ -57,10 +57,9 @@ module MockAPI
         # For start_call endpoint
         if endpoint == "/call/start"
             return start_call(
-                body["op_name"];
+                model=get(body, "model", ""),
                 inputs=get(body, "inputs", nothing),
-                display_name=get(body, "display_name", nothing),
-                attributes=get(body, "attributes", nothing)
+                metadata=get(body, "metadata", nothing)
             )
         # For end_call endpoint
         elseif endpoint == "/call/end"
@@ -74,25 +73,25 @@ module MockAPI
     end
 
     # Start call with both positional and keyword arguments
-    function start_call(id::String; trace_id::String="", op_name::String="", started_at::String="", inputs=nothing, display_name=nothing, attributes=nothing)
-        started_at = isempty(started_at) ? format_iso8601(now(UTC)) : started_at
-        trace_id = isempty(trace_id) ? string(uuid4()) : trace_id
+    function start_call(; model::String="", inputs::Union{Dict{String,String},Nothing}=nothing, metadata::Union{Dict{String,String},Nothing}=nothing)
+        id = string(uuid4())
+        trace_id = string(uuid4())
+        started_at = format_iso8601(now(UTC))
 
         call_data = Dict{String,Any}(
             "id" => id,
             "trace_id" => trace_id,
-            "op_name" => op_name,
             "started_at" => started_at
         )
 
+        if !isempty(model)
+            call_data["model"] = model
+        end
         if !isnothing(inputs)
             call_data["inputs"] = inputs
         end
-        if !isnothing(display_name)
-            call_data["display_name"] = display_name
-        end
-        if !isnothing(attributes)
-            call_data["attributes"] = attributes
+        if !isnothing(metadata)
+            call_data["metadata"] = metadata
         end
 
         push!(mock_results.start_calls, call_data)
