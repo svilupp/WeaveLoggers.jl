@@ -5,6 +5,7 @@ using HTTP
 using JSON3
 using Base64
 using Dates
+using UUIDs
 
 # Export the main functionality
 export weave_log, test_weave_api, start_call, end_call, read_call
