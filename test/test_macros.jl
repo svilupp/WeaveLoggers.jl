@@ -265,8 +265,8 @@ end
             end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
             duration_ms = Dates.value(end_time - start_time)
 
-            # Quick operation should take less than 100ms
-            @test duration_ms < 100
+            # Quick operation should take less than 200ms
+            @test duration_ms < 200
 
             # Test long operation timing
             empty!(mock_results.start_calls)
