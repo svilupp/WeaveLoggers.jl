@@ -160,6 +160,7 @@ macro w(args...)
 
         # Return the result
         result
-    end # macro w
+    end # quote
+end # macro w
 
 end # module Macros
