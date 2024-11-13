@@ -6,7 +6,6 @@ using Base64
 using Dates
 using UUIDs
 using Statistics
-using PromptingTools
 
 # Global variables
 const WANDB_API_KEY = get(ENV, "WANDB_API_KEY", "")
