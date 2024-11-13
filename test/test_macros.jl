@@ -53,6 +53,7 @@ using Test
 using WeaveLoggers
 using Dates
 using Statistics
+using UUIDs
 
 # Test data structures
 struct TestType

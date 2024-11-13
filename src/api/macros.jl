@@ -8,7 +8,7 @@ module Macros
 
 using ..WeaveLoggers: format_iso8601
 using ..WeaveLoggers.Calls: start_call, end_call
-using Dates
+using Dates, UUIDs
 
 export @w
 
