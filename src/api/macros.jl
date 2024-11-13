@@ -190,8 +190,10 @@ macro wtable(args...)
     # Handle table_name - ensure it's a string
     table_name = if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
         args[1]
-    else
+    elseif isa(args[1], Symbol)
         string(args[1])
+    else
+        throw(ArgumentError("Table name must be a string or symbol"))
     end
 
     data_expr = args[2]
@@ -232,10 +234,16 @@ macro wfile(args...)
     local file_path_expr
     local start_idx
 
-    if length(args) >= 2 && (isa(args[1], String) || args[1] === nothing)
-        file_name_expr = args[1]
-        file_path_expr = args[2]
-        start_idx = 3
+    if length(args) >= 2
+        if isa(args[1], String)
+            file_name_expr = args[1]
+            file_path_expr = args[2]
+            start_idx = 3
+        else
+            file_name_expr = nothing
+            file_path_expr = args[1]
+            start_idx = 2
+        end
     else
         file_name_expr = nothing
         file_path_expr = args[1]
