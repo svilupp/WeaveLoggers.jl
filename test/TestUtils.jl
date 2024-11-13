@@ -2,6 +2,7 @@ module TestUtils
 
 using WeaveLoggers
 using Dates
+using UUIDs
 
 # Test data structures
 struct TestType
@@ -38,12 +39,35 @@ module MockAPI
     using ..TestUtils: mock_results
     using UUIDs
     using Dates
+    using WeaveLoggers: format_iso8601
+
+    # Mock weave_api function to bypass actual API calls
+    function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
+                      base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
+        # For start_call endpoint
+        if endpoint == "/call/start"
+            return start_call(
+                body["op_name"];
+                inputs=get(body, "inputs", nothing),
+                display_name=get(body, "display_name", nothing),
+                attributes=get(body, "attributes", nothing)
+            )
+        # For end_call endpoint
+        elseif endpoint == "/call/end"
+            return end_call(
+                body["id"];
+                outputs=get(body, "outputs", Dict{String,Any}()),
+                error=get(body, "error", nothing)
+            )
+        end
+        return Dict{String,Any}("status" => "mocked", "endpoint" => endpoint)
+    end
 
     # Start call with both positional and keyword arguments
     function start_call(op_name::String; inputs=nothing, display_name=nothing, attributes=nothing)
         call_id = string(uuid4())
         trace_id = string(uuid4())
-        started_at = WeaveLoggers.format_iso8601(now(UTC))
+        started_at = format_iso8601(now(UTC))
 
         call_data = Dict{String,Any}(
             "id" => call_id,
@@ -63,14 +87,14 @@ module MockAPI
         end
 
         push!(mock_results.start_calls, call_data)
-        return call_data  # Return full data for macro to use
+        return call_data
     end
 
     function end_call(call_id::String; outputs::Dict{String,Any}=Dict{String,Any}(), error::Union{Nothing,Dict{String,Any}}=nothing)
         call_data = Dict{String,Any}(
             "id" => call_id,
             "outputs" => outputs,
-            "ended_at" => WeaveLoggers.format_iso8601(now(UTC))
+            "ended_at" => format_iso8601(now(UTC))
         )
 
         if !isnothing(error)
@@ -78,11 +102,17 @@ module MockAPI
         end
 
         push!(mock_results.end_calls, call_data)
-        return call_data  # Return full data for consistency
+        return call_data
     end
 end
 
+# Override WeaveLoggers API functions with mock versions
+const weave_api = MockAPI.weave_api
+const start_call = MockAPI.start_call
+const end_call = MockAPI.end_call
+
 # Export everything
 export TestType, setup_test_data, MockAPIResults, mock_results, MockAPI
+export weave_api, start_call, end_call
 
 end

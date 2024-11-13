@@ -2,11 +2,17 @@ using Test
 using Aqua
 using Statistics
 using Dates
-using WeaveLoggers
 
 # Load test utilities first to ensure mock implementations are available
 include("TestUtils.jl")
 using .TestUtils
+
+# Import WeaveLoggers after TestUtils to allow proper mocking
+using WeaveLoggers
+
+# Override WeaveLoggers API functions with mock versions
+import WeaveLoggers: weave_api
+const weave_api = TestUtils.weave_api
 
 @testset "WeaveLoggers.jl" begin
     # Run macro tests first (these use mock API functions)
