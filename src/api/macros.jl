@@ -199,9 +199,6 @@ macro wtable(args...)
 
     return quote
         local data = $(esc(data_expr))
-        if !Tables.istable(data)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
-        end
         local tags = Symbol[]  # Initialize as empty Symbol vector
         append!(tags, $tag_values)  # Add any provided tags
         create_table($(esc(table_name)), data, tags)

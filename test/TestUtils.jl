@@ -133,7 +133,18 @@ module MockAPI
 
     # Mock create_table function with unified handling for all table types
     function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
-        # Check Tables.jl compatibility first
+        # Special handling for DataFrames
+        if data isa DataFrame
+            table_data = Dict{String,Any}(
+                "name" => name,
+                "data" => data,
+                "tags" => tags
+            )
+            push!(mock_results.table_calls, table_data)
+            return table_data
+        end
+
+        # Check Tables.jl compatibility for other types
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
