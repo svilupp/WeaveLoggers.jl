@@ -273,13 +273,13 @@ macro wfile(args...)
 
         # Handle file name separately with error handling
         local raw_name = try
-            $(file_name_expr === nothing ? nothing : esc(file_name_expr))
+            $(file_name_expr === nothing ? :(nothing) : esc(file_name_expr))
         catch e
             nothing  # Default to nothing on error
         end
 
         # Use basename if no name provided or if explicitly nothing
-        local name = if isnothing(raw_name) || raw_name === nothing
+        local name = if raw_name === nothing
             basename(string(raw_path))
         else
             string(raw_name)
