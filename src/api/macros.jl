@@ -250,6 +250,11 @@ macro wfile(args...)
         local file_path = $(esc(file_path_expr))
         local file_name = $(esc(file_name_expr))
 
+        # Check if file path is valid
+        if isnothing(file_path)
+            throw(ArgumentError("File path cannot be nothing"))
+        end
+
         # Check if file exists
         if !isfile(file_path)
             throw(ArgumentError("File does not exist: $file_path"))
@@ -262,7 +267,8 @@ macro wfile(args...)
             file_name
         end
 
-        local tags = $tag_values
+        local tags = Symbol[]  # Initialize as empty Symbol vector
+        append!(tags, $tag_values)  # Add any provided tags
         create_file(name, file_path, tags)
     end
 end

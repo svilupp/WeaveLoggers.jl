@@ -146,15 +146,17 @@ module MockAPI
     end
 
     # Add method for Vector{Symbol} tags
-    function create_table(name::String, data::Any, tags::Vector{T}=Symbol[]) where T
+    function create_table(name::String, data::Any, tags::Vector{T}=Symbol[]) where {T}
         # Check Tables.jl compatibility
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
+        # Convert empty vector to Symbol[] to avoid type issues
+        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
         table_data = Dict{String,Any}(
             "name" => name,
             "data" => data,
-            "tags" => convert(Vector{Symbol}, tags)
+            "tags" => actual_tags
         )
         push!(mock_results.table_calls, table_data)
         return table_data
@@ -175,14 +177,16 @@ module MockAPI
     end
 
     # Add method for Vector{Symbol} tags
-    function create_file(name::String, path::String, tags::Vector{T}=Symbol[]) where T
+    function create_file(name::String, path::String, tags::Vector{T}=Symbol[]) where {T}
         if !isfile(path)
             throw(ArgumentError("File does not exist: $path"))
         end
+        # Convert empty vector to Symbol[] to avoid type issues
+        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
         file_data = Dict{String,Any}(
             "name" => name,
             "path" => path,
-            "tags" => convert(Vector{Symbol}, tags)
+            "tags" => actual_tags
         )
         push!(mock_results.file_calls, file_data)
         return file_data
