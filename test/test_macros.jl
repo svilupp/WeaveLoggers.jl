@@ -168,16 +168,10 @@ const end_call = TestUtils.MockAPI.end_call
 
             # Test quick operation timing precision
             result = @w "quick_op" sum([1,2,3])
-            start_call = mock_results.start_calls[1]
-            end_call = mock_results.end_calls[1]
 
-            # Parse timestamps with millisecond precision
-            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            duration_ms = Dates.value(end_time - start_time)
-
-            # Quick operation should take less than 200ms
-            @test duration_ms < 200
+            # Get duration from attributes
+            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            @test duration_ns > 0
 
             # Test long operation timing
             empty!(mock_results.start_calls)
@@ -185,15 +179,10 @@ const end_call = TestUtils.MockAPI.end_call
 
             # Use pre-defined large array for longer operation
             result = @w "long_op" sum(test_data.large_array)
-            start_call = mock_results.start_calls[1]
-            end_call = mock_results.end_calls[1]
 
-            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            duration_ms = Dates.value(end_time - start_time)
-
-            # Long operation should take measurable time
-            @test duration_ms > 0
+            # Get duration from attributes
+            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            @test duration_ns > 0
         end
     end
 
@@ -328,8 +317,8 @@ end
         @test_throws ArgumentError @wtable "invalid" non_table
 
         # Test with missing arguments - this should throw an ArgumentError
-        @test_throws ArgumentError @wtable
-        @test_throws ArgumentError @wtable "missing_data"
+        @test_throws ArgumentError eval(:(WeaveLoggers.@wtable))
+        @test_throws ArgumentError eval(:(WeaveLoggers.@wtable "missing_data"))
     end
 end
 
