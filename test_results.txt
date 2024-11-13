@@ -1,5 +1,5 @@
      Testing WeaveLoggers
-      Status `/tmp/jl_atZZ6C/Project.toml`
+      Status `/tmp/jl_8Dk7yN/Project.toml`
 ⌅ [4c88cf16] Aqua v0.6.7
   [cd3eb016] HTTP v1.10.10
   [0f8b85d8] JSON3 v1.14.1
@@ -10,7 +10,7 @@
   [10745b16] Statistics v1.10.0
   [8dfed614] Test
   [cf7118a7] UUIDs
-      Status `/tmp/jl_atZZ6C/Manifest.toml`
+      Status `/tmp/jl_8Dk7yN/Manifest.toml`
   [1520ce14] AbstractTrees v0.4.5
 ⌅ [4c88cf16] Aqua v0.6.7
   [d1d4a3ce] BitFlags v0.1.9
@@ -78,80 +78,385 @@
   [8e850ede] nghttp2_jll v1.52.0+1
   [3f19e933] p7zip_jll v17.4.0+2
         Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading.
-Precompiling project...
-  ✓ WeaveLoggers
-  1 dependency successfully precompiled in 2 seconds. 33 already precompiled.
      Testing Running tests...
-Macro Tests: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/runtests.jl:7
+┌ Warning: OPENAI_API_KEY variable not set! OpenAI models will not be available - set API key directly via `PromptingTools.OPENAI_API_KEY=<api-key>`!
+└ @ PromptingTools ~/.julia/packages/PromptingTools/5bvgB/src/user_preferences.jl:185
+Basic Functionality: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:86
   Got exception outside of a @test
-  LoadError: invalid redefinition of constant Calls.start_call
+  UndefVarError: `uuid4` not defined
   Stacktrace:
-    [1] setproperty!
-      @ ./Base.jl:51 [inlined]
-    [2] setproperty!(x::Module, f::Symbol, v::Function)
-      @ Base ./Base.jl:49
-    [3] top-level scope
-      @ ~/WeaveLoggers.jl/test/test_macros.jl:82
-    [4] include(fname::String)
-      @ Base.MainInclude ./client.jl:494
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:92 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:88 [inlined]
     [5] macro expansion
-      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
-    [6] macro expansion
       @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
-    [7] macro expansion
-      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
-    [8] macro expansion
-      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
-    [9] top-level scope
-      @ ~/WeaveLoggers.jl/test/runtests.jl:7
-   [10] include(fname::String)
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
       @ Base.MainInclude ./client.jl:494
-   [11] top-level scope
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
       @ none:6
-   [12] eval
+   [15] eval
       @ ./boot.jl:385 [inlined]
-   [13] exec_options(opts::Base.JLOptions)
+   [16] exec_options(opts::Base.JLOptions)
       @ Base ./client.jl:296
-   [14] _start()
+   [17] _start()
       @ Base ./client.jl:557
-  in expression starting at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:82
-┌ Warning: Skipping API integration tests: WANDB_API_KEY not set
-└ @ Main ~/WeaveLoggers.jl/test/runtests.jl:17
-Skipping Base.active_repl
-Skipping Base.active_repl_backend
-WeaveLoggers [a9686da5-e0b9-46cb-9899-df25d4575ac4]: Test Failed at /home/ubuntu/.julia/packages/Aqua/zpdNP/src/stale_deps.jl:25
-  Expression: result ⊜ true
-   Evaluated: ⟪result: 😭 FAILED: WeaveLoggers [a9686da5-e0b9-46cb-9899-df25d4575ac4]
-    Some package(s) in `deps` of WeaveLoggers [a9686da5-e0b9-46cb-9899-df25d4575ac4] are not loaded during via `using WeaveLoggers`.
-    * Statistics [10745b16-79ce-11e8-11f9-7d13ad32a3b2]
-    * PromptingTools [670122d1-24a8-4d70-bfce-740807c42192]
-    
-    To ignore from stale dependency detection, pass the package name to `ignore` keyword argument of `Aqua.test_stale_deps`
-⟫ ⊜ true
+Error Handling: Test Failed at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:164
+  Expression: #= /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:164 =# @w div(1, 0)
+    Expected: DivideError
+      Thrown: UndefVarError
+
+Stacktrace:
+ [1] macro expansion
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:164 [inlined]
+ [2] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [3] macro expansion
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:160 [inlined]
+ [4] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [5] top-level scope
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+Error Handling: Test Failed at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:165
+  Expression: length(mock_results.start_calls) == 1
+   Evaluated: 0 == 1
 
 Stacktrace:
  [1] macro expansion
    @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:672 [inlined]
  [2] macro expansion
-   @ ~/.julia/packages/Aqua/zpdNP/src/stale_deps.jl:25 [inlined]
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:165 [inlined]
  [3] macro expansion
-   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1669 [inlined]
- [4] test_stale_deps(packages::Module; kwargs::@Kwargs{})
-   @ Aqua ~/.julia/packages/Aqua/zpdNP/src/stale_deps.jl:23
-Test Summary:                                             | Pass  Fail  Error  Total  Time
-WeaveLoggers.jl                                           |    8     1      1     10  8.2s
-  Macro Tests                                             |                 1      1  1.0s
-  Code quality (Aqua.jl)                                  |    8     1             9  7.0s
-    Method ambiguity                                      |    1                   1  1.7s
-    Unbound type parameters                               |    1                   1  0.0s
-    Undefined exports                                     |    1                   1  0.0s
-    Compare Project.toml and test/Project.toml            |    1                   1  0.0s
-    Stale dependencies                                    |          1             1  2.5s
-      WeaveLoggers [a9686da5-e0b9-46cb-9899-df25d4575ac4] |          1             1  1.0s
-    Compat bounds                                         |    1                   1  0.2s
-    Project.toml formatting                               |    2                   2  0.2s
-    Piracy                                                |    1                   1  0.0s
-ERROR: LoadError: Some tests did not pass: 8 passed, 1 failed, 1 errored, 0 broken.
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [4] macro expansion
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:160 [inlined]
+ [5] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [6] top-level scope
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+Error Handling: Test Failed at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:166
+  Expression: length(mock_results.end_calls) == 1
+   Evaluated: 0 == 1
+
+Stacktrace:
+ [1] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:672 [inlined]
+ [2] macro expansion
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:166 [inlined]
+ [3] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [4] macro expansion
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:160 [inlined]
+ [5] macro expansion
+   @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+ [6] top-level scope
+   @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+Error Handling: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:158
+  Got exception outside of a @test
+  BoundsError: attempt to access 0-element Vector{Dict{String, Any}} at index [1]
+  Stacktrace:
+    [1] getindex(A::Vector{Dict{String, Any}}, i1::Int64)
+      @ Base ./essentials.jl:13
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:168 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:160 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Time Measurement: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:177
+  Got exception outside of a @test
+  UndefVarError: `uuid4` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:183 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:179 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Complex Input Types: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:199
+  Got exception outside of a @test
+  UndefVarError: `test_obj` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:81 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:206 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:201 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Nested Function Calls: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:215
+  Got exception outside of a @test
+  UndefVarError: `uuid4` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:221 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:217 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Additional Time Measurement Tests: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:235
+  Got exception outside of a @test
+  UndefVarError: `uuid4` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:241 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:237 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Edge Cases: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:271
+  Got exception outside of a @test
+  UndefVarError: `uuid4` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:277 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:273 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+Performance: Error During Test at /home/ubuntu/WeaveLoggers.jl/test/test_macros.jl:298
+  Got exception outside of a @test
+  UndefVarError: `uuid4` not defined
+  Stacktrace:
+    [1] macro expansion
+      @ ~/WeaveLoggers.jl/src/api/macros.jl:85 [inlined]
+    [2] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:312 [inlined]
+    [3] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [4] macro expansion
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:300 [inlined]
+    [5] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+    [6] top-level scope
+      @ ~/WeaveLoggers.jl/test/test_macros.jl:86
+    [7] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+    [8] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+    [9] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [10] macro expansion
+      @ ~/WeaveLoggers.jl/test/runtests.jl:8 [inlined]
+   [11] macro expansion
+      @ ~/.julia/juliaup/julia-1.10.6+0.x64.linux.gnu/share/julia/stdlib/v1.10/Test/src/Test.jl:1577 [inlined]
+   [12] top-level scope
+      @ ~/WeaveLoggers.jl/test/runtests.jl:7
+   [13] include(fname::String)
+      @ Base.MainInclude ./client.jl:494
+   [14] top-level scope
+      @ none:6
+   [15] eval
+      @ ./boot.jl:385 [inlined]
+   [16] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:296
+   [17] _start()
+      @ Base ./client.jl:557
+┌ Warning: Skipping API integration tests: WANDB_API_KEY not set
+└ @ Main ~/WeaveLoggers.jl/test/runtests.jl:17
+┌ Warning: OPENAI_API_KEY variable not set! OpenAI models will not be available - set API key directly via `PromptingTools.OPENAI_API_KEY=<api-key>`!
+└ @ PromptingTools ~/.julia/packages/PromptingTools/5bvgB/src/user_preferences.jl:185
+Skipping Base.active_repl
+Skipping Base.active_repl_backend
+┌ Warning: OPENAI_API_KEY variable not set! OpenAI models will not be available - set API key directly via `PromptingTools.OPENAI_API_KEY=<api-key>`!
+└ @ PromptingTools ~/.julia/packages/PromptingTools/5bvgB/src/user_preferences.jl:185
+Test Summary:                           | Pass  Fail  Error  Total   Time
+WeaveLoggers.jl                         |    9     3      8     20  12.0s
+  Macro Tests                           |          3      8     11   5.0s
+    WeaveLoggers.@w Macro Tests         |          3      8     11   3.0s
+      Basic Functionality               |                 1      1   0.9s
+      Error Handling                    |          3      1      4   1.5s
+      Time Measurement                  |                 1      1   0.1s
+      Complex Input Types               |                 1      1   0.1s
+      Nested Function Calls             |                 1      1   0.1s
+      Additional Time Measurement Tests |                 1      1   0.1s
+      Edge Cases                        |                 1      1   0.1s
+      Performance                       |                 1      1   0.2s
+  Code quality (Aqua.jl)                |    9                   9   7.0s
+ERROR: LoadError: Some tests did not pass: 9 passed, 3 failed, 8 errored, 0 broken.
 in expression starting at /home/ubuntu/WeaveLoggers.jl/test/runtests.jl:5
 ERROR: Package WeaveLoggers errored during testing
 Stacktrace:
