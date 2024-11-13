@@ -4,6 +4,10 @@ using Statistics
 using Dates
 using WeaveLoggers
 
+# Load test utilities first to ensure mock implementations are available
+include("TestUtils.jl")
+using .TestUtils
+
 @testset "WeaveLoggers.jl" begin
     # Run macro tests first (these use mock API functions)
     @testset "Macro Tests" begin
