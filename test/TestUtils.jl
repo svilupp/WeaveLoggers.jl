@@ -38,16 +38,17 @@ module MockAPI
     using UUIDs
     using Dates
 
-    function start_call(op_name::String; inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
-        call_id = string(uuid4())
-        trace_id = string(uuid4())
+    function start_call(; id::String="", trace_id::String="", op_name::String="", started_at::String="", inputs::Dict=Dict(), attributes::Dict=Dict())
+        # If id/trace_id not provided, generate them
+        call_id = isempty(id) ? string(uuid4()) : id
+        call_trace_id = isempty(trace_id) ? string(uuid4()) : trace_id
+        start_time = isempty(started_at) ? WeaveLoggers.format_iso8601(now(UTC)) : started_at
 
         call_data = Dict{String,Any}(
             "id" => call_id,
-            "trace_id" => trace_id,
+            "trace_id" => call_trace_id,
             "op_name" => op_name,
-            "display_name" => isempty(display_name) ? op_name : display_name,
-            "started_at" => WeaveLoggers.format_iso8601(now(UTC)),
+            "started_at" => start_time,
             "inputs" => inputs,
             "attributes" => attributes
         )
