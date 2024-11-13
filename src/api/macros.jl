@@ -202,7 +202,7 @@ macro wtable(args...)
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
-        create_table($(esc(table_name)), data, $(esc(tags)))
+        create_table($(esc(table_name)), data, tags)
     end
 end
 
@@ -243,7 +243,7 @@ macro wfile(args...)
         start_idx = 2
     end
 
-    tags = [QuoteNode(arg) for arg in args[start_idx:end] if arg isa Symbol]
+    tags = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
         local file_path = $(esc(file_path_expr))
@@ -254,9 +254,9 @@ macro wfile(args...)
         end
 
         # Use basename if no name provided
-        local name = $(file_name_expr) === nothing ? basename(file_path) : $(file_name_expr)
+        local name = $(esc(file_name_expr)) === nothing ? basename(file_path) : $(esc(file_name_expr))
 
-        create_file(name, file_path, $(tags...))
+        create_file(name, file_path, tags)
     end
 end
 
