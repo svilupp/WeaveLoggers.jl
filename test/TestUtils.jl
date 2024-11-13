@@ -1,8 +1,7 @@
 module TestUtils
 
 using WeaveLoggers
-using Dates
-using UUIDs
+using Dates, UUIDs, Tables
 
 # Test data structures
 struct TestType
@@ -133,6 +132,10 @@ module MockAPI
 
     # Mock create_table function
     function create_table(name::String, data::Any, tags::Symbol...)
+        # Check Tables.jl compatibility
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
         table_data = Dict{String,Any}(
             "name" => name,
             "data" => data,
@@ -144,6 +147,10 @@ module MockAPI
 
     # Add method for Vector{Symbol} tags
     function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
+        # Check Tables.jl compatibility
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
         table_data = Dict{String,Any}(
             "name" => name,
             "data" => data,
@@ -162,6 +169,20 @@ module MockAPI
             "name" => name,
             "path" => path,
             "tags" => collect(tags)
+        )
+        push!(mock_results.file_calls, file_data)
+        return file_data
+    end
+
+    # Add method for Vector{Symbol} tags
+    function create_file(name::String, path::String, tags::Vector{Symbol}=Symbol[])
+        if !isfile(path)
+            throw(ArgumentError("File does not exist: $path"))
+        end
+        file_data = Dict{String,Any}(
+            "name" => name,
+            "path" => path,
+            "tags" => tags
         )
         push!(mock_results.file_calls, file_data)
         return file_data
