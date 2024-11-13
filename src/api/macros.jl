@@ -279,7 +279,7 @@ macro wfile(args...)
         end
 
         # Use basename if no name provided or if explicitly nothing
-        local name = if isnothing(raw_name)
+        local name = if isnothing(raw_name) || raw_name === nothing
             basename(string(raw_path))
         else
             string(raw_name)
