@@ -91,23 +91,24 @@ macro w(args...)
             Type[]  # Handle cases where type extraction fails
         end
 
-        # Start the call
+        # Generate unique IDs for the call
         local call_id = $call_id
         local trace_id = $trace_id
+
+        # Start the call
         start_call(
-            $(esc(op_name)),  # First argument is the operation name
+            call_id,
+            trace_id=trace_id,
+            op_name=$(esc(op_name)),
+            started_at=format_iso8601(start_time),
             inputs=Dict(
                 "args" => input_args,
                 "types" => input_types,
-                "code" => $expr_str,
-                "call_id" => call_id,
-                "trace_id" => trace_id,
-                "started_at" => format_iso8601(start_time)
+                "code" => $expr_str
             ),
             attributes=Dict{String,Any}(
                 "tags" => $tags,
-                "expression" => $expr_str,
-                "start_time_ns" => start_time_ns
+                "expression" => $expr_str
             )
         )
 
@@ -123,11 +124,12 @@ macro w(args...)
                 Base.show_backtrace(io, bt)
             end
 
-            # End the call with detailed error information
+            # End the call with error information
             end_call(
-                call_id,  # First argument is the call ID
+                call_id,
                 error=error_msg,
                 ended_at=format_iso8601(now(UTC)),
+                outputs=nothing,  # No outputs on error
                 attributes=Dict{String,Any}(
                     "expression" => $expr_str,
                     "error_type" => string(typeof(e)),
@@ -141,25 +143,23 @@ macro w(args...)
         local end_time_ns = time_ns()
         local duration_ns = end_time_ns - start_time_ns
 
-        # End the call successfully with timing information
+        # End the call successfully
         end_call(
-            call_id,  # First argument is the call ID
+            call_id,
+            ended_at=format_iso8601(now(UTC)),
             outputs=Dict(
                 "result" => result,
                 "type" => typeof(result),
                 "code" => $expr_str
             ),
-            ended_at=format_iso8601(now(UTC)),
             attributes=Dict{String,Any}(
                 "expression" => $expr_str,
-                "duration_ns" => duration_ns,
-                "end_time_ns" => end_time_ns
+                "duration_ns" => duration_ns
             )
         )
 
         # Return the result
         result
     end
-end
 
 end # module Macros
