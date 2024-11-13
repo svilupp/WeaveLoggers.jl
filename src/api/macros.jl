@@ -241,6 +241,9 @@ Log a file to Weights & Biases Weave service.
 ```
 """
 macro wfile(args...)
+    # Debug output
+    @info "Macro args" typeof(args[1]) args[1]
+
     # Extract file name/path and validate
     if length(args) < 1
         throw(ArgumentError("@wfile requires at least a file path"))
@@ -251,8 +254,14 @@ macro wfile(args...)
     local file_path_expr
     local start_idx
 
-    if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing)
-        file_name_expr = args[1]
+    if length(args) >= 2 && (
+        isa(args[1], String) ||
+        (isa(args[1], Expr) && args[1].head == :string) ||
+        args[1] === nothing ||
+        (args[1] isa Symbol && args[1] === Symbol("nothing"))
+    )
+        # Convert nothing symbol to actual nothing during macro expansion
+        file_name_expr = args[1] === Symbol("nothing") ? nothing : args[1]
         file_path_expr = args[2]
         start_idx = 3
     else
