@@ -38,6 +38,26 @@ module MockAPI
     using UUIDs
     using Dates
 
+    # Support both positional and keyword arguments
+    function start_call(op_name::String=""; inputs::Dict=Dict(), display_name::String="", attributes::Dict=Dict())
+        call_id = string(uuid4())
+        trace_id = string(uuid4())
+        started_at = WeaveLoggers.format_iso8601(now(UTC))
+
+        call_data = Dict{String,Any}(
+            "id" => call_id,
+            "trace_id" => trace_id,
+            "op_name" => op_name,
+            "started_at" => started_at,
+            "inputs" => inputs,
+            "attributes" => attributes
+        )
+
+        push!(mock_results.start_calls, call_data)
+        return call_id
+    end
+
+    # Support keyword-only version for macro
     function start_call(; id::String="", trace_id::String="", op_name::String="", started_at::String="", inputs::Dict=Dict(), attributes::Dict=Dict())
         # If id/trace_id not provided, generate them
         call_id = isempty(id) ? string(uuid4()) : id
