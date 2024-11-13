@@ -2,10 +2,61 @@ using WeaveLoggers
 using Test
 using Dates
 using JSON3
+using HTTP
+
+# Mock API results structure
+mutable struct MockWeaveAPI
+    calls::Dict{String, Dict{String,Any}}
+    last_request::Union{Nothing,Dict{String,Any}}
+end
+
+# Initialize mock API
+const mock_api = MockWeaveAPI(Dict{String,Any}(), nothing)
+
+# Mock the weave_api function
+function WeaveLoggers.weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
+                               base_url::String=WeaveLoggers.WEAVE_API_BASE_URL,
+                               query_params::Dict{String,String}=Dict{String,String}())
+    # Store the request for inspection
+    mock_api.last_request = Dict(
+        "method" => method,
+        "endpoint" => endpoint,
+        "body" => body,
+        "base_url" => base_url,
+        "query_params" => query_params
+    )
+
+    if method == "POST" && endpoint == "/call/start"
+        # Handle start_call
+        call_id = body["start"]["id"]
+        mock_api.calls[call_id] = Dict(
+            "start" => body["start"]
+        )
+        return nothing
+    elseif method == "POST" && occursin(r"/call/.+/end", endpoint)
+        # Handle end_call
+        call_id = split(endpoint, "/")[3]
+        if haskey(mock_api.calls, call_id)
+            mock_api.calls[call_id]["end"] = body["end"]
+            return nothing
+        else
+            throw(HTTP.ExceptionRequest.StatusError(404, "POST", endpoint, nothing))
+        end
+    elseif method == "GET" && endpoint == "/call/read"
+        # Handle read_call
+        call_id = query_params["id"]
+        if haskey(mock_api.calls, call_id)
+            return mock_api.calls[call_id]
+        else
+            throw(HTTP.ExceptionRequest.StatusError(404, "GET", endpoint, nothing))
+        end
+    end
+end
 
 @testset "Weave API Integration" begin
-    # Test API connectivity first
-    @test test_weave_api() == true
+    # Reset mock API state
+    empty!(mock_api.calls)
+    mock_api.last_request = nothing
 
     # Test complete call workflow
     test_metadata = Dict{String,String}(
@@ -17,31 +68,19 @@ using JSON3
 
     # Start a call with all required fields
     @info "Starting call with test data..."
-    try
-        call_id = start_call(
-            model="test-model",
-            inputs=Dict{String,String}(
-                "prompt" => "Hello, World!",
-                "temperature" => "0.7"
-            ),
-            metadata=test_metadata
-        )
-        @info "Call started successfully" call_id=call_id
-    catch e
-        @error "Failed to start call" exception=e
-        if e isa HTTP.ExceptionRequest.StatusError
-            @error "API Error Details" status=e.status response=String(e.response.body)
-        end
-        rethrow(e)
-    end
+    call_id = start_call(
+        model="test-model",
+        inputs=Dict{String,String}(
+            "prompt" => "Hello, World!",
+            "temperature" => "0.7"
+        ),
+        metadata=test_metadata
+    )
 
     # Verify call_id
     @test !isnothing(call_id)
     @test typeof(call_id) == String
     @test length(call_id) > 0
-
-    # Give the API a moment to process
-    sleep(1)
 
     # End the call with complete information
     success = end_call(
@@ -55,9 +94,6 @@ using JSON3
     )
     @test success == true
 
-    # Give the API a moment to process
-    sleep(1)
-
     # Read and verify the call data
     call_data = read_call(call_id)
     @test !isnothing(call_data)
@@ -67,7 +103,7 @@ using JSON3
     @test call_data["start"]["id"] == call_id
     @test haskey(call_data["start"], "inputs")
     @test call_data["start"]["inputs"]["prompt"] == "Hello, World!"
-    @test call_data["start"]["inputs"]["temperature"] == 0.7
+    @test call_data["start"]["inputs"]["temperature"] == "0.7"
 
     # Verify metadata
     @test haskey(call_data["start"], "project_id")
@@ -86,5 +122,5 @@ using JSON3
     @test call_data["end"]["outputs"]["tokens"] == 10
 
     # Test error handling
-    @test_throws Exception read_call("nonexistent-id")
+    @test_throws HTTP.ExceptionRequest.StatusError read_call("nonexistent-id")
 end

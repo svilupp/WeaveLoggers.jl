@@ -1,102 +1,14 @@
-"""
-Test suite for WeaveLoggers macro functionality.
-
-TODO List of Tests:
-1. Basic Functionality
-   - [x] Test basic function call without options
-   - [x] Test with explicit operation name
-   - [x] Test with metadata tags
-   - [x] Test with both operation name and tags
-   - [x] Test with nested function calls
-
-2. Input/Output Logging
-   - [x] Test logging of different input types (numbers, strings, arrays)
-   - [x] Test logging of complex input types (structs, custom types)
-   - [x] Test output value capture
-   - [x] Test output type capture
-   - [x] Test expression string capture
-
-3. Time Measurement
-   - [x] Test timing accuracy with sleep
-   - [ ] Test timing with quick operations
-   - [ ] Test timing with long-running operations
-   - [ ] Test timing precision (milliseconds)
-
-4. Error Handling
-   - [x] Test error capture in try-catch
-   - [x] Test error message formatting
-   - [x] Test error stack trace
-   - [x] Test error attributes
-   - [x] Test error propagation
-
-5. API Integration
-   - [x] Mock start_call function
-   - [x] Mock end_call function
-   - [x] Test API call sequence
-   - [x] Test API payload structure
-   - [x] Test API error handling
-
-6. Edge Cases
-   - [ ] Test empty input arguments
-   - [ ] Test very large inputs/outputs
-   - [ ] Test unicode in strings
-   - [ ] Test special characters in operation names
-   - [ ] Test concurrent calls
-
-7. Performance
-   - [ ] Test overhead of macro vs direct calls
-   - [ ] Test memory allocation
-   - [ ] Test with multiple concurrent operations
-"""
-
 using Test
 using WeaveLoggers
 using Dates
 using Statistics
 using UUIDs
+include("TestUtils.jl")
+using .TestUtils
 
-# Test data structures
-struct TestType
-    x::Int
-    y::String
-end
-
-# Test setup function to initialize all test data
-function setup_test_data()
-    TEST_ARRAY_SIZE = 1_000_000
-    test_obj = TestType(42, "hello")
-    large_array = rand(TEST_ARRAY_SIZE)
-    large_string = repeat("a", TEST_ARRAY_SIZE)
-    return (
-        TEST_ARRAY_SIZE = TEST_ARRAY_SIZE,
-        test_obj = test_obj,
-        large_array = large_array,
-        large_string = large_string
-    )
-end
-
-# Mock API call results for verification
-mutable struct MockAPIResults
-    start_calls::Vector{Dict{String,Any}}
-    end_calls::Vector{Dict{String,Any}}
-end
-
-# Initialize mock results
-mock_results = MockAPIResults(Dict{String,Any}[], Dict{String,Any}[])
-
-# Import WeaveLoggers API functions for mocking
-import WeaveLoggers.Calls: start_call, end_call
-
-# Define mock implementations
-function start_call(; kwargs...)
-    push!(mock_results.start_calls, Dict{String,Any}(string(k) => v for (k,v) in kwargs))
-    return Dict{String,Any}("status" => "started")
-end
-
-function end_call(; kwargs...)
-    push!(mock_results.end_calls, Dict{String,Any}(string(k) => v for (k,v) in kwargs))
-    return Dict{String,Any}("status" => "completed")
-end
+# Override WeaveLoggers API functions with mock implementations
+Core.eval(WeaveLoggers.Calls, :(start_call = $TestUtils.MockAPI.start_call))
+Core.eval(WeaveLoggers.Calls, :(end_call = $TestUtils.MockAPI.end_call))
 
 @testset "WeaveLoggers.@w Macro Tests" begin
     @testset "Basic Functionality" begin
