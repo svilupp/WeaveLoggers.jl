@@ -264,13 +264,25 @@ macro wfile(args...)
     tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
-        local file_path = $(esc(file_path_expr))
-        local file_name = $(esc(file_name_expr))
+        local file_path = try
+            $(esc(file_path_expr))
+        catch e
+            throw(ArgumentError("Invalid file path expression: $(e)"))
+        end
 
-        # Validate file path
+        local file_name = try
+            $(esc(file_name_expr))
+        catch e
+            nothing
+        end
+
+        # Validate file path after escaping
         if isnothing(file_path)
             throw(ArgumentError("File path cannot be nothing"))
         end
+
+        # Convert to string if not already
+        file_path = string(file_path)
 
         # Check if file exists
         if !isfile(file_path)
