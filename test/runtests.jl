@@ -12,7 +12,7 @@ using WeaveLoggers
 
 # Override WeaveLoggers API functions with mock versions
 import WeaveLoggers: weave_api
-const weave_api = TestUtils.weave_api
+WeaveLoggers.weave_api = TestUtils.weave_api  # Direct assignment instead of const declaration
 
 @testset "WeaveLoggers.jl" begin
     # Run macro tests first (these use mock API functions)
