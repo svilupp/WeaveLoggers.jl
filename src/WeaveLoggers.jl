@@ -54,9 +54,9 @@ function test_weave_api()
     end
 
     try
-        # Test API endpoint with a simple GET request
+        # Test API endpoint with a simple GET request to /call
         response = HTTP.get(
-            "$WEAVE_API_BASE_URL/health",
+            "$WEAVE_API_BASE_URL/call",
             get_auth_headers(api_key)
         )
         return response.status == 200
@@ -85,7 +85,7 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
             "display_name" => get(metadata, "display_name", model),
             "trace_id" => get(metadata, "trace_id", call_id),
             "parent_id" => get(metadata, "parent_id", nothing),
-            "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SS.sssZ"),
+            "started_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:MM:SS.sssZ"),
             "attributes" => metadata,
             "inputs" => inputs,
             "wb_user_id" => get(metadata, "wb_user_id", nothing),
@@ -120,7 +120,7 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
     body = Dict(
         "end" => Dict(
             "outputs" => outputs,
-            "ended_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SS.sssZ")
+            "ended_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:MM:SS.sssZ")
         )
     )
     if !isnothing(error)
