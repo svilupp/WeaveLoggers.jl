@@ -195,13 +195,14 @@ macro wtable(args...)
     end
 
     data_expr = args[2]
-    tags = [arg.value for arg in args[3:end] if arg isa QuoteNode]
+    tag_values = [arg.value for arg in args[3:end] if arg isa QuoteNode]
 
     return quote
         local data = $(esc(data_expr))
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
+        local tags = $tag_values
         create_table($(esc(table_name)), data, tags)
     end
 end
@@ -243,10 +244,11 @@ macro wfile(args...)
         start_idx = 2
     end
 
-    tags = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
+    tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
         local file_path = $(esc(file_path_expr))
+        local file_name = $(esc(file_name_expr))
 
         # Check if file exists
         if !isfile(file_path)
@@ -254,8 +256,13 @@ macro wfile(args...)
         end
 
         # Use basename if no name provided
-        local name = $(esc(file_name_expr)) === nothing ? basename(file_path) : $(esc(file_name_expr))
+        local name = if file_name === nothing
+            basename(file_path)
+        else
+            file_name
+        end
 
+        local tags = $tag_values
         create_file(name, file_path, tags)
     end
 end
