@@ -12,7 +12,9 @@ WeaveLoggers = "a9686da5-e0b9-46cb-9899-df25d4575ac4"
 
 [compat]
 Aqua = "0.6"
+DataFrames = "1.6"
 HTTP = "1.10"
 JSON3 = "1.14"
 Statistics = "1"
+Tables = "1.10"
 julia = "1.10"
