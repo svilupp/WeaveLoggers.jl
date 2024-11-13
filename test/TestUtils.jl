@@ -133,7 +133,7 @@ module MockAPI
 
     # Mock create_table function with unified handling for all table types
     function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
-        # Check Tables.jl compatibility
+        # Check Tables.jl compatibility first
         if !Tables.istable(data)
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
@@ -152,37 +152,18 @@ module MockAPI
         create_table(name, data, collect(tags))
     end
 
-    # Method for keyword arguments
-    function create_table(name::String, data::Any; tags::Union{Vector{Symbol},Symbol,Nothing}=nothing)
-        actual_tags = if isnothing(tags)
-            Symbol[]
-        elseif tags isa Symbol
-            [tags]
-        else
-            convert(Vector{Symbol}, tags)
+    # Mock create_file function with unified handling for all tag types
+    function create_file(name::String, path::Union{String,Nothing}, tags::Vector{Symbol}=Symbol[])
+        # Handle nothing path case first
+        if isnothing(path)
+            throw(ArgumentError("File path cannot be nothing"))
         end
-        create_table(name, data, actual_tags)
-    end
 
-    # Mock create_file function
-    function create_file(name::String, path::String, tags::Symbol...)
+        # Check if file exists
         if !isfile(path)
             throw(ArgumentError("File does not exist: $path"))
         end
-        file_data = Dict{String,Any}(
-            "name" => name,
-            "path" => path,
-            "tags" => collect(tags)
-        )
-        push!(mock_results.file_calls, file_data)
-        return file_data
-    end
 
-    # Add method for Vector{Symbol} tags
-    function create_file(name::String, path::String, tags::Vector{T}=Symbol[]) where {T}
-        if !isfile(path)
-            throw(ArgumentError("File does not exist: $path"))
-        end
         # Convert empty vector to Symbol[] to avoid type issues
         actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
         file_data = Dict{String,Any}(
@@ -193,6 +174,12 @@ module MockAPI
         push!(mock_results.file_calls, file_data)
         return file_data
     end
+
+    # Convenience method for variadic tags
+    function create_file(name::String, path::Union{String,Nothing}, tags::Symbol...)
+        create_file(name, path, collect(tags))
+    end
+
 end # module MockAPI
 
 # Override WeaveLoggers API functions with mock versions
