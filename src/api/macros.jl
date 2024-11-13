@@ -74,12 +74,22 @@ macro w(args...)
 
     # Create the annotated expression
     quote
-        # Capture start time
-        local start_time = now()
+        # Capture start time with nanosecond precision
+        local start_time_ns = time_ns()
+        local start_time = now(UTC)
 
-        # Prepare input logging
-        local input_args = Any[$(map(arg -> :($(esc(arg))), expr.args[2:end])...)]
-        local input_types = Type[$(map(arg -> :(typeof($(esc(arg)))), expr.args[2:end])...)]
+        # Extract and escape input arguments more carefully
+        local input_args = try
+            Any[$(map(arg -> :($(esc(arg))), expr.args[2:end])...)]
+        catch
+            Any[]  # Handle cases where argument extraction fails
+        end
+
+        local input_types = try
+            Type[$(map(arg -> :(typeof($(esc(arg)))), expr.args[2:end])...)]
+        catch
+            Type[]  # Handle cases where type extraction fails
+        end
 
         # Start the call
         local call_id = $call_id
@@ -92,41 +102,58 @@ macro w(args...)
             inputs=Dict(
                 "args" => input_args,
                 "types" => input_types,
-                "code" => $expr_str  # Add the expression string
+                "code" => $expr_str
             ),
             attributes=Dict{String,Any}(
                 "tags" => $tags,
-                "expression" => $expr_str  # Also add to attributes for better visibility
+                "expression" => $expr_str,
+                "start_time_ns" => start_time_ns
             )
         )
 
-        # Execute the function
+        # Execute the function with detailed error handling
         local result = try
             $(esc(expr))
         catch e
-            # End the call with error
+            # Capture detailed error information
+            local bt = catch_backtrace()
+            local error_msg = sprint() do io
+                showerror(io, e)
+                println(io)
+                Base.show_backtrace(io, bt)
+            end
+
+            # End the call with detailed error information
             end_call(
                 id=call_id,
-                error=sprint(showerror, e),
-                ended_at=format_iso8601(now()),
+                error=error_msg,
+                ended_at=format_iso8601(now(UTC)),
                 attributes=Dict{String,Any}(
-                    "expression" => $expr_str  # Include expression in error case
+                    "expression" => $expr_str,
+                    "error_type" => string(typeof(e)),
+                    "duration_ns" => time_ns() - start_time_ns
                 )
             )
             rethrow(e)
         end
 
-        # End the call successfully
+        # Calculate duration with nanosecond precision
+        local end_time_ns = time_ns()
+        local duration_ns = end_time_ns - start_time_ns
+
+        # End the call successfully with timing information
         end_call(
             id=call_id,
             outputs=Dict(
                 "result" => result,
                 "type" => typeof(result),
-                "code" => $expr_str  # Add the expression string
+                "code" => $expr_str
             ),
-            ended_at=format_iso8601(now()),
+            ended_at=format_iso8601(now(UTC)),
             attributes=Dict{String,Any}(
-                "expression" => $expr_str  # Also add to attributes for better visibility
+                "expression" => $expr_str,
+                "duration_ns" => duration_ns,
+                "end_time_ns" => end_time_ns
             )
         )
 
