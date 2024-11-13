@@ -10,9 +10,11 @@ using .TestUtils
 # Import WeaveLoggers after TestUtils to allow proper mocking
 using WeaveLoggers
 
-# Override WeaveLoggers API functions with mock versions
-import WeaveLoggers: weave_api
-WeaveLoggers.weave_api = TestUtils.weave_api  # Direct assignment instead of const declaration
+# Define test-specific methods for WeaveLoggers functions
+function WeaveLoggers.weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
+                               base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
+    TestUtils.MockAPI.weave_api(method, endpoint, body; base_url=base_url, query_params=query_params)
+end
 
 @testset "WeaveLoggers.jl" begin
     # Run macro tests first (these use mock API functions)
