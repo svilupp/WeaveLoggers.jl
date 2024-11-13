@@ -56,6 +56,7 @@ empty!(mock_results.file_calls)
 
     # Then run code quality tests
     @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(WeaveLoggers)
+        # Skip ambiguities test as they are in external packages
+        Aqua.test_all(WeaveLoggers; ambiguities=false)
     end
 end

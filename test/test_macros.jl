@@ -327,8 +327,8 @@ end
         non_table = [1, 2, 3]
         @test_throws ArgumentError @wtable "invalid" non_table
 
-
-        # Test with missing arguments
+        # Test with missing arguments - this should throw an ArgumentError
+        @test_throws ArgumentError @wtable
         @test_throws ArgumentError @wtable "missing_data"
     end
 end
