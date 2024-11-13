@@ -178,32 +178,41 @@ Log a Tables.jl-compatible object or DataFrame to Weights & Biases Weave service
 # Example
 ```julia
 df = DataFrame(a = 1:3, b = ["x", "y", "z"])
-@wtable "my_table" df :tag1 :tag2
+@wtable "my_table" df :tag1 :tag2  # Explicit name
+@wtable df :tag1 :tag2             # Uses variable name
 ```
 """
 macro wtable(args...)
     # Extract table name and data object
-    if length(args) < 2
-        throw(ArgumentError("@wtable requires at least a table name and data object"))
+    if length(args) < 1
+        throw(ArgumentError("@wtable requires at least a data object"))
     end
 
-    # Handle table_name - ensure it's a string
-    table_name = if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
-        args[1]
-    elseif isa(args[1], Symbol)
-        string(args[1])
+    # Handle different calling patterns
+    local table_name_expr
+    local data_expr
+    local start_idx
+
+    if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string))
+        # Explicit string name provided: @wtable "name" data
+        table_name_expr = args[1]
+        data_expr = args[2]
+        start_idx = 3
     else
-        throw(ArgumentError("Table name must be a string or symbol"))
+        # Use first argument as both name and data: @wtable data
+        data_expr = args[1]
+        table_name_expr = string(args[1])
+        start_idx = 2
     end
 
-    data_expr = args[2]
-    tag_values = [arg.value for arg in args[3:end] if arg isa QuoteNode]
+    tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
         local data = $(esc(data_expr))
-        local tags = Symbol[]  # Initialize as empty Symbol vector
-        append!(tags, $tag_values)  # Add any provided tags
-        create_table($(esc(table_name)), data, tags)
+        local table_name = $(esc(table_name_expr))
+        local tags = Symbol[]
+        append!(tags, $tag_values)
+        create_table(table_name, data, tags)
     end
 end
 
@@ -235,7 +244,7 @@ macro wfile(args...)
     local start_idx
 
     if length(args) >= 2
-        if isa(args[1], String)
+        if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string) || args[1] === nothing
             file_name_expr = args[1]
             file_path_expr = args[2]
             start_idx = 3
