@@ -79,22 +79,37 @@ function test_weave_api()
 
     try
         # Test API endpoint with a simple call start request
+        test_id = generate_uuid()
         test_body = Dict(
             "start" => Dict(
                 "project_id" => "test",
-                "id" => generate_uuid(),
+                "id" => test_id,
                 "op_name" => "test_connection",
                 "display_name" => "API Test",
-                "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ")
+                "trace_id" => test_id,
+                "parent_id" => nothing,
+                "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
+                "attributes" => Dict{String,Any}(),
+                "inputs" => Dict{String,Any}(),
+                "wb_user_id" => "test-user",
+                "wb_run_id" => "test-run"
             )
         )
 
+        @info "Testing API connection" body=test_body
         response = HTTP.post(
             "$WEAVE_API_BASE_URL/call/start",
             get_auth_headers(api_key),
             JSON3.write(test_body)
         )
-        return response.status == 200
+
+        if response.status != 200
+            @error "API test failed" status=response.status body=String(response.body)
+            return false
+        end
+
+        @info "API test successful" status=response.status
+        return true
     catch e
         @error "Failed to connect to Weave API" exception=e
         return false
@@ -112,22 +127,22 @@ function start_call(; model::String="", inputs::Dict=Dict(), metadata::Dict=Dict
     call_id = generate_uuid()
 
     # Convert string values in inputs to appropriate types
-    converted_inputs = Dict(k => convert_input_value(v) for (k, v) in inputs)
+    converted_inputs = Dict{String,Any}(k => convert_input_value(v) for (k, v) in inputs)
 
-    # Prepare request body according to API specification
+    # Ensure all required fields are present with proper types
     body = Dict(
-        "start" => Dict(
+        "start" => Dict{String,Any}(
             "project_id" => get(metadata, "project_id", "default"),
             "id" => call_id,
-            "op_name" => model,
-            "display_name" => get(metadata, "display_name", model),
+            "op_name" => isempty(model) ? "default_operation" : model,
+            "display_name" => get(metadata, "display_name", isempty(model) ? "Default Operation" : model),
             "trace_id" => get(metadata, "trace_id", call_id),
             "parent_id" => get(metadata, "parent_id", nothing),
-            "started_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ"),
-            "attributes" => metadata,
+            "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
+            "attributes" => Dict{String,Any}(string(k) => v for (k,v) in metadata),
             "inputs" => converted_inputs,
-            "wb_user_id" => get(metadata, "wb_user_id", nothing),
-            "wb_run_id" => get(metadata, "wb_run_id", nothing)
+            "wb_user_id" => get(metadata, "wb_user_id", "default-user"),
+            "wb_run_id" => get(metadata, "wb_run_id", "default-run")
         )
     )
 
@@ -164,7 +179,7 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
     body = Dict(
         "end" => Dict(
             "outputs" => outputs,
-            "ended_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:mm:ss.sssZ")
+            "ended_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ")
         )
     )
     if !isnothing(error)
