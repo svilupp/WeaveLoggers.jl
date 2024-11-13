@@ -331,6 +331,7 @@ end
             e isa LoadError && e.error isa ArgumentError
         end
     end
+end
 
 @testset "WeaveLoggers.@wfile Macro Tests" begin
     @testset "Basic File Functionality" begin
@@ -410,3 +411,4 @@ end
             e isa LoadError && e.error isa ArgumentError
         end
     end
+end
