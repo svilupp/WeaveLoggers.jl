@@ -142,6 +142,17 @@ module MockAPI
         return table_data
     end
 
+    # Add method for Vector{Symbol} tags
+    function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
+        table_data = Dict{String,Any}(
+            "name" => name,
+            "data" => data,
+            "tags" => tags
+        )
+        push!(mock_results.table_calls, table_data)
+        return table_data
+    end
+
     # Mock create_file function
     function create_file(name::String, path::String, tags::Symbol...)
         if !isfile(path)
