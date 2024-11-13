@@ -276,3 +276,134 @@ const end_call = TestUtils.MockAPI.end_call
         @test length(concurrent_calls) == 10
     end
 end
+
+@testset "WeaveLoggers.@wtable Macro Tests" begin
+    using DataFrames, Tables
+
+    @testset "Basic Table Functionality" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test basic DataFrame logging
+        df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+        result = @wtable "test_table" df
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_table"
+        @test table_call["data"] == df
+        @test isempty(table_call["tags"])
+
+        # Test with tags
+        empty!(mock_results.table_calls)
+        result = @wtable "test_table_tags" df :tag1 :tag2
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_table_tags"
+        @test table_call["tags"] == [:tag1, :tag2]
+    end
+
+    @testset "Table Name Handling" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test with variable name when no string name provided
+        df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+        test_df = df
+        result = @wtable test_df :data
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_df"
+        @test table_call["tags"] == [:data]
+    end
+
+    @testset "Table Error Handling" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test with non-Tables-compatible object
+        non_table = [1, 2, 3]
+        @test_throws ArgumentError @wtable "invalid" non_table
+
+
+        # Test with missing arguments
+        @test_throws ArgumentError @wtable "missing_data"
+    end
+end
+
+@testset "WeaveLoggers.@wfile Macro Tests" begin
+    @testset "Basic File Functionality" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Create a temporary test file
+        test_file = tempname()
+        write(test_file, "test content")
+
+        try
+            # Test basic file logging with explicit name
+            result = @wfile "test_file" test_file
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == "test_file"
+            @test file_call["path"] == test_file
+            @test isempty(file_call["tags"])
+
+            # Test with tags
+            empty!(mock_results.file_calls)
+            result = @wfile "test_file_tags" test_file :config :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == "test_file_tags"
+            @test file_call["tags"] == [:config, :test]
+        finally
+            rm(test_file, force=true)
+        end
+    end
+
+    @testset "File Name Handling" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Create a temporary test file
+        test_file = tempname()
+        write(test_file, "test content")
+
+        try
+            # Test without explicit name (should use basename)
+            result = @wfile nothing test_file :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == basename(test_file)
+            @test file_call["tags"] == [:test]
+
+            # Test with just file path (should use basename)
+            empty!(mock_results.file_calls)
+            result = @wfile test_file :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == basename(test_file)
+            @test file_call["tags"] == [:test]
+        finally
+            rm(test_file, force=true)
+        end
+    end
+
+    @testset "File Error Handling" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Test with non-existent file
+        non_existent = tempname()
+        @test_throws ArgumentError @wfile "error" non_existent
+
+        # Test with missing arguments
+        @test_throws ArgumentError @wfile
+    end
+end

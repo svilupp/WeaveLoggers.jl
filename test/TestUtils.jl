@@ -112,15 +112,42 @@ module MockAPI
         push!(mock_results.end_calls, call_data)
         return call_data
     end
-end
+
+    # Mock create_table function
+    function create_table(name::String, data::Any, tags::Symbol...)
+        table_data = Dict{String,Any}(
+            "name" => name,
+            "data" => data,
+            "tags" => collect(tags)
+        )
+        push!(mock_results.table_calls, table_data)
+        return table_data
+    end
+
+    # Mock create_file function
+    function create_file(name::String, path::String, tags::Symbol...)
+        if !isfile(path)
+            throw(ArgumentError("File does not exist: $path"))
+        end
+        file_data = Dict{String,Any}(
+            "name" => name,
+            "path" => path,
+            "tags" => collect(tags)
+        )
+        push!(mock_results.file_calls, file_data)
+        return file_data
+    end
+end # module MockAPI
 
 # Override WeaveLoggers API functions with mock versions
 const weave_api = MockAPI.weave_api
 const start_call = MockAPI.start_call
 const end_call = MockAPI.end_call
+const create_table = MockAPI.create_table
+const create_file = MockAPI.create_file
 
 # Export everything
 export TestType, setup_test_data, MockAPIResults, mock_results, MockAPI
-export weave_api, start_call, end_call
+export weave_api, start_call, end_call, create_table, create_file
 
 end

@@ -8,9 +8,11 @@ module Macros
 
 using ..WeaveLoggers: format_iso8601
 using ..WeaveLoggers.Calls: start_call, end_call
-using Dates, UUIDs
+using ..WeaveLoggers.Tables: create_table
+using ..WeaveLoggers.Files: create_file
+using Dates, UUIDs, Tables, DataFrames
 
-export @w
+export @w, @wtable, @wfile
 
 """
     @w [op_name::String] [tags::Symbol...] expr
@@ -162,5 +164,99 @@ macro w(args...)
         result
     end # quote
 end # macro w
+
+"""
+    @wtable(table_name::String, data, tags::Symbol...)
+
+Log a Tables.jl-compatible object or DataFrame to Weights & Biases Weave service.
+
+# Arguments
+- `table_name::String`: Name under which the table will be logged
+- `data`: A Tables.jl-compatible object or DataFrame to be logged
+- `tags::Symbol...`: Optional tags to be associated with the table
+
+# Example
+```julia
+df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+@wtable "my_table" df :tag1 :tag2
+```
+"""
+macro wtable(args...)
+    # Extract table name and data object
+    if length(args) < 2
+        throw(ArgumentError("@wtable requires at least a table name and data object"))
+    end
+
+    table_name = args[1]
+    data_expr = args[2]
+    tags = [QuoteNode(arg) for arg in args[3:end] if arg isa Symbol]
+
+    # If no explicit name provided, use variable name
+    if !isa(table_name, String)
+        table_name = string(data_expr)
+    end
+
+    return quote
+        local data = $(esc(data_expr))
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
+        create_table($table_name, data, $(tags...))
+    end
+end
+
+"""
+    @wfile(file_name::Union{String,Nothing}, file_path, tags::Symbol...)
+
+Log a file to Weights & Biases Weave service.
+
+# Arguments
+- `file_name::Union{String,Nothing}`: Optional name for the file (if not provided, basename of file_path is used)
+- `file_path`: Path to the file to be logged
+- `tags::Symbol...`: Optional tags to be associated with the file
+
+# Example
+```julia
+@wfile "config.yaml" "/path/to/config.yaml" :config :yaml
+@wfile nothing "data.csv" :data :csv  # Uses "data.csv" as name
+```
+"""
+macro wfile(args...)
+    # Extract file name/path and validate
+    if length(args) < 1
+        throw(ArgumentError("@wfile requires at least a file path"))
+    end
+
+    # Handle optional file name
+    local file_name_expr
+    local file_path_expr
+    local start_idx
+
+    if length(args) >= 2 && (isa(args[1], String) || args[1] === nothing)
+        file_name_expr = args[1]
+        file_path_expr = args[2]
+        start_idx = 3
+    else
+        file_name_expr = nothing
+        file_path_expr = args[1]
+        start_idx = 2
+    end
+
+    tags = [QuoteNode(arg) for arg in args[start_idx:end] if arg isa Symbol]
+
+    return quote
+        local file_path = $(esc(file_path_expr))
+
+        # Check if file exists
+        if !isfile(file_path)
+            throw(ArgumentError("File does not exist: $file_path"))
+        end
+
+        # Use basename if no name provided
+        local name = $(file_name_expr) === nothing ? basename(file_path) : $(file_name_expr)
+
+        create_file(name, file_path, $(tags...))
+    end
+end
 
 end # module Macros
