@@ -95,14 +95,14 @@ macro w(args...)
         local call_id = $call_id
         local trace_id = $trace_id
         start_call(
-            id=call_id,
-            trace_id=trace_id,
-            op_name=$(esc(op_name)),
-            started_at=format_iso8601(start_time),
+            $(esc(op_name)),  # First argument is the operation name
             inputs=Dict(
                 "args" => input_args,
                 "types" => input_types,
-                "code" => $expr_str
+                "code" => $expr_str,
+                "call_id" => call_id,
+                "trace_id" => trace_id,
+                "started_at" => format_iso8601(start_time)
             ),
             attributes=Dict{String,Any}(
                 "tags" => $tags,
@@ -125,7 +125,7 @@ macro w(args...)
 
             # End the call with detailed error information
             end_call(
-                id=call_id,
+                call_id,  # First argument is the call ID
                 error=error_msg,
                 ended_at=format_iso8601(now(UTC)),
                 attributes=Dict{String,Any}(
@@ -143,7 +143,7 @@ macro w(args...)
 
         # End the call successfully with timing information
         end_call(
-            id=call_id,
+            call_id,  # First argument is the call ID
             outputs=Dict(
                 "result" => result,
                 "type" => typeof(result),
