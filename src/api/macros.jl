@@ -193,7 +193,8 @@ macro wtable(args...)
     local data_expr
     local start_idx
 
-    if length(args) >= 2 && (isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string))
+    # Check if first argument is a string (explicit name)
+    if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
         # Explicit string name provided: @wtable "name" data
         if length(args) < 2
             throw(ArgumentError("@wtable requires a data object when table name is provided"))
@@ -266,7 +267,12 @@ macro wfile(args...)
         local file_path = $(esc(file_path_expr))
         local file_name = $(esc(file_name_expr))
 
-        # Check if file exists first
+        # Validate file path
+        if isnothing(file_path)
+            throw(ArgumentError("File path cannot be nothing"))
+        end
+
+        # Check if file exists
         if !isfile(file_path)
             throw(ArgumentError("File does not exist: $file_path"))
         end
