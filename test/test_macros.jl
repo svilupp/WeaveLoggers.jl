@@ -304,8 +304,8 @@ end
 
             # Test unicode in strings
             unicode_str = "Hello, 世界! 🌍"
-            result = @w "unicode" length(unicode_str)
-            @test result == 13
+            result = @w "unicode" length(collect(unicode_str))
+            @test result == 12
 
             # Test special characters in operation names
             result = @w "special!@#\$%^&*" identity(42)
