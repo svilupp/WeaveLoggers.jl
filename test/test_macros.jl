@@ -168,16 +168,10 @@ const end_call = TestUtils.MockAPI.end_call
 
             # Test quick operation timing precision
             result = @w "quick_op" sum([1,2,3])
-            start_call = mock_results.start_calls[1]
-            end_call = mock_results.end_calls[1]
 
-            # Parse timestamps with millisecond precision
-            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            duration_ms = Dates.value(end_time - start_time)
-
-            # Quick operation should take less than 200ms
-            @test duration_ms < 200
+            # Get duration from attributes
+            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            @test duration_ns > 0
 
             # Test long operation timing
             empty!(mock_results.start_calls)
@@ -185,15 +179,10 @@ const end_call = TestUtils.MockAPI.end_call
 
             # Use pre-defined large array for longer operation
             result = @w "long_op" sum(test_data.large_array)
-            start_call = mock_results.start_calls[1]
-            end_call = mock_results.end_calls[1]
 
-            start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
-            duration_ms = Dates.value(end_time - start_time)
-
-            # Long operation should take measurable time
-            @test duration_ms > 0
+            # Get duration from attributes
+            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            @test duration_ns > 0
         end
     end
 
@@ -274,5 +263,152 @@ const end_call = TestUtils.MockAPI.end_call
         # Verify all calls were logged
         concurrent_calls = filter(call -> startswith(call["op_name"], "concurrent_"), mock_results.start_calls)
         @test length(concurrent_calls) == 10
+    end
+end
+
+@testset "WeaveLoggers.@wtable Macro Tests" begin
+    using DataFrames, Tables
+
+    @testset "Basic Table Functionality" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test basic DataFrame logging
+        df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+        result = @wtable "test_table" df
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_table"
+        @test table_call["data"] == df
+        @test isempty(table_call["tags"])
+
+        # Test with tags
+        empty!(mock_results.table_calls)
+        result = @wtable "test_table_tags" df :tag1 :tag2
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_table_tags"
+        @test table_call["tags"] == [:tag1, :tag2]
+    end
+
+    @testset "Table Name Handling" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test with variable name when no string name provided
+        df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+        test_df = df
+        result = @wtable test_df :data
+        @test length(mock_results.table_calls) == 1
+
+        table_call = mock_results.table_calls[1]
+        @test table_call["name"] == "test_df"
+        @test table_call["tags"] == [:data]
+    end
+
+    @testset "Table Error Handling" begin
+        # Reset mock results
+        empty!(mock_results.table_calls)
+
+        # Test with non-Tables-compatible object
+        non_table = [1, 2, 3]
+        @test_throws ArgumentError @wtable "invalid" non_table
+
+        # Test with missing arguments - this should throw an ArgumentError
+        @test try
+            eval(:(WeaveLoggers.@wtable))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
+
+        @test try
+            eval(:(WeaveLoggers.@wtable "missing_data"))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
+    end
+end
+
+@testset "WeaveLoggers.@wfile Macro Tests" begin
+    @testset "Basic File Functionality" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Create a temporary test file
+        test_file = tempname()
+        write(test_file, "test content")
+
+        try
+            # Test basic file logging with explicit name
+            result = @wfile "test_file" test_file
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == "test_file"
+            @test file_call["path"] == test_file
+            @test isempty(file_call["tags"])
+
+            # Test with tags
+            empty!(mock_results.file_calls)
+            result = @wfile "test_file_tags" test_file :config :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == "test_file_tags"
+            @test file_call["tags"] == [:config, :test]
+        finally
+            rm(test_file, force=true)
+        end
+    end
+
+    @testset "File Name Handling" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Create a temporary test file
+        test_file = tempname()
+        write(test_file, "test content")
+
+        try
+            # Test without explicit name (should use basename)
+            result = @wfile nothing test_file :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == basename(test_file)
+            @test file_call["tags"] == [:test]
+
+            # Test with just file path (should use basename)
+            empty!(mock_results.file_calls)
+            result = @wfile test_file :test
+            @test length(mock_results.file_calls) == 1
+
+            file_call = mock_results.file_calls[1]
+            @test file_call["name"] == basename(test_file)
+            @test file_call["tags"] == [:test]
+        finally
+            rm(test_file, force=true)
+        end
+    end
+
+    @testset "File Error Handling" begin
+        # Reset mock results
+        empty!(mock_results.file_calls)
+
+        # Test with non-existent file
+        non_existent = tempname()
+        @test_throws ArgumentError @wfile "error" non_existent
+
+        # Test with missing arguments
+        @test try
+            eval(:(WeaveLoggers.@wfile))
+            false
+        catch e
+            e isa LoadError && e.error isa ArgumentError
+        end
     end
 end

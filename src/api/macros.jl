@@ -8,9 +8,11 @@ module Macros
 
 using ..WeaveLoggers: format_iso8601
 using ..WeaveLoggers.Calls: start_call, end_call
-using Dates, UUIDs
+using ..WeaveLoggers.Tables: create_table
+using ..WeaveLoggers.Files: create_file
+using Dates, UUIDs, Tables, DataFrames
 
-export @w
+export @w, @wtable, @wfile
 
 """
     @w [op_name::String] [tags::Symbol...] expr
@@ -162,5 +164,143 @@ macro w(args...)
         result
     end # quote
 end # macro w
+
+"""
+    @wtable(table_name::String, data, tags::Symbol...)
+
+Log a Tables.jl-compatible object or DataFrame to Weights & Biases Weave service.
+
+# Arguments
+- `table_name::String`: Name under which the table will be logged
+- `data`: A Tables.jl-compatible object or DataFrame to be logged
+- `tags::Symbol...`: Optional tags to be associated with the table
+
+# Example
+```julia
+df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+@wtable "my_table" df :tag1 :tag2  # Explicit name
+@wtable df :tag1 :tag2             # Uses variable name
+```
+"""
+macro wtable(args...)
+    # Extract table name and data object
+    if length(args) < 1
+        throw(ArgumentError("@wtable requires at least a data object"))
+    end
+
+    # Handle different calling patterns
+    local table_name_expr
+    local data_expr
+    local start_idx
+
+    # Check if first argument is a string (explicit name)
+    if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
+        # Explicit string name provided: @wtable "name" data
+        if length(args) < 2
+            throw(ArgumentError("@wtable requires a data object when table name is provided"))
+        end
+        table_name_expr = args[1]
+        data_expr = args[2]
+        start_idx = 3
+    else
+        # Use first argument as both name and data: @wtable data
+        data_expr = args[1]
+        table_name_expr = string(args[1])
+        start_idx = 2
+    end
+
+    tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
+
+    return quote
+        local data = $(esc(data_expr))
+        # Verify data is Tables.jl-compatible
+        if !Tables.istable(data)
+            throw(ArgumentError("Data must be Tables.jl-compatible"))
+        end
+        local table_name = $(esc(table_name_expr))
+        local tags = Symbol[]
+        append!(tags, $tag_values)
+        create_table(table_name, data, tags)
+    end
+end
+
+"""
+    @wfile(file_name::Union{String,Nothing}, file_path, tags::Symbol...)
+
+Log a file to Weights & Biases Weave service.
+
+# Arguments
+- `file_name::Union{String,Nothing}`: Optional name for the file (if not provided, basename of file_path is used)
+- `file_path`: Path to the file to be logged
+- `tags::Symbol...`: Optional tags to be associated with the file
+
+# Example
+```julia
+@wfile "config.yaml" "/path/to/config.yaml" :config :yaml
+@wfile nothing "data.csv" :data :csv  # Uses "data.csv" as name
+```
+"""
+macro wfile(args...)
+    # Extract file name/path and validate
+    if length(args) < 1
+        throw(ArgumentError("@wfile requires at least a file path argument"))
+    end
+
+    # Debug output (after length check)
+    @info "Macro args" typeof(args[1]) args[1]
+
+    # Handle optional file name
+    local file_name_expr
+    local file_path_expr
+    local start_idx
+
+    if length(args) >= 2 && (
+        isa(args[1], String) ||
+        (isa(args[1], Expr) && args[1].head == :string) ||
+        args[1] === nothing ||
+        (args[1] isa Symbol && args[1] === Symbol("nothing"))
+    )
+        # Convert nothing symbol to actual nothing during macro expansion
+        file_name_expr = args[1] === Symbol("nothing") ? nothing : args[1]
+        file_path_expr = args[2]
+        start_idx = 3
+    else
+        file_name_expr = nothing
+        file_path_expr = args[1]
+        start_idx = 2
+    end
+
+    tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
+
+    return quote
+        # First evaluate the file path with error handling
+        local raw_path = try
+            $(esc(file_path_expr))
+        catch e
+            throw(ArgumentError("Invalid file path expression: $(e)"))
+        end
+
+        # Handle file name separately with error handling
+        local raw_name = try
+            $(file_name_expr === nothing ? :(nothing) : esc(file_name_expr))
+        catch e
+            nothing  # Default to nothing on error
+        end
+
+        # Use basename if no name provided or if explicitly nothing
+        local name = if raw_name === nothing
+            basename(string(raw_path))
+        else
+            string(raw_name)
+        end
+
+        # Collect tags
+        local tags = Symbol[]
+        append!(tags, $tag_values)
+
+        # Create the file entry - let create_file handle all validation
+        create_file(name, raw_path, tags)
+    end
+end
 
 end # module Macros

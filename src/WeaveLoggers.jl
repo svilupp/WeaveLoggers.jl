@@ -125,7 +125,7 @@ using .Calls: start_call, end_call, update_call, delete_call, read_call
 using .Objects: create_object, read_object
 using .Tables: create_table, update_table, query_table
 using .Files: create_file, get_file_content
-using .Macros: @w  # Export the @w macro
+using .Macros: @w, @wtable, @wfile  # Export all macros
 
 # Export core functionality
 export weave_api, format_iso8601
@@ -136,6 +136,6 @@ export start_call, end_call, update_call, delete_call, read_call
 export create_object, read_object
 export create_table, update_table, query_table
 export create_file, get_file_content
-export @w  # Export the macro
+export @w, @wtable, @wfile  # Export all macros
 
 end # module
