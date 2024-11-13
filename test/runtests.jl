@@ -2,6 +2,8 @@ using Test
 using Aqua
 using Statistics
 using Dates
+using DataFrames
+using Tables
 
 # Load test utilities first to ensure mock implementations are available
 include("TestUtils.jl")
