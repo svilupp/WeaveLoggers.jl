@@ -1,6 +1,8 @@
-using WeaveLoggers
 using Test
 using Aqua
+using Statistics
+using Dates
+using WeaveLoggers
 
 @testset "WeaveLoggers.jl" begin
     # Run macro tests first (these use mock API functions)
