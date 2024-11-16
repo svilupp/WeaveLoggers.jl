@@ -43,8 +43,8 @@ function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dic
     system_metadata = get_system_metadata()
     merged_attributes = merge(system_metadata, attributes)
 
-    # Create flattened payload structure as required by API
-    body = Dict{String,Any}(
+    # Create inner payload structure
+    inner_payload = Dict{String,Any}(
         "project_id" => PROJECT_ID,
         "id" => call_id,
         "op_name" => formatted_op_name,
@@ -57,6 +57,9 @@ function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dic
         "wb_user_id" => nothing,
         "wb_run_id" => nothing
     )
+
+    # Wrap payload in "start" object as required by API
+    body = Dict{String,Any}("start" => inner_payload)
 
     weave_api("POST", "/call/start", body)
     return call_id, trace_id, started_at
