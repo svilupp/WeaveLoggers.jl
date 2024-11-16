@@ -55,74 +55,95 @@ module MockAPI
         ENV["WANDB_API_KEY"] = "mock-api-key-for-testing"
 
         # For start_call endpoint
-        if endpoint == "/call/start"
+        if endpoint == "/call/start" && !isnothing(body)
             return start_call(
-                model=get(body, "model", ""),
-                inputs=get(body, "inputs", nothing),
-                metadata=get(body, "metadata", nothing)
+                id=get(body, "id", string(uuid4())),
+                trace_id=get(body, "trace_id", string(uuid4())),
+                op_name=get(body, "op_name", ""),
+                started_at=get(body, "started_at", format_iso8601(now(UTC))),
+                inputs=get(body, "inputs", Dict()),
+                attributes=get(body, "attributes", Dict())
             )
         # For end_call endpoint
-        elseif endpoint == "/call/end"
+        elseif endpoint == "/call/end" && !isnothing(body)
             return end_call(
                 body["id"];
-                outputs=get(body, "outputs", Dict{String,Any}()),
-                error=get(body, "error", nothing)
+                outputs=get(body, "outputs", Dict()),
+                error=get(body, "error", nothing),
+                trace_id=get(body, "trace_id", string(uuid4())),
+                started_at=get(body, "started_at", format_iso8601(now(UTC)))
+            )
+        # For update_call endpoint
+        elseif endpoint == "/call/update" && !isnothing(body)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(body, "id", ""),
+                "project_id" => get(body, "project_id", "")
+            )
+        # For delete_call endpoint
+        elseif endpoint == "/call/delete" && !isnothing(body)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(body, "id", ""),
+                "project_id" => get(body, "project_id", "")
+            )
+        # For read_call endpoint
+        elseif endpoint == "/call/read" && !isnothing(query_params)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(query_params, "id", ""),
+                "project_id" => get(query_params, "project_id", "")
             )
         end
         return Dict{String,Any}("status" => "mocked", "endpoint" => endpoint)
     end
 
-    # Start call with both positional and keyword arguments
-    function start_call(id::String; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
-                       started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
-                       attributes::Union{Dict,Nothing}=nothing, model::String="",
-                       metadata::Union{Dict,Nothing}=nothing)
-        # Call the non-parameterized version and modify its result
-        result = start_call(; trace_id=isnothing(trace_id) ? id : trace_id,
-                            op_name=op_name, started_at=started_at,
-                            inputs=inputs, attributes=attributes,
-                            model=model, metadata=metadata)
-        result["id"] = id  # Override the generated ID with the provided one
-        # Note: We don't push to mock_results here as it's already done in the non-parameterized version
-        return id  # Return only the ID string
-    end
-
-    function start_call(; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
-                       started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
-                       attributes::Union{Dict,Nothing}=nothing, model::String="",
-                       metadata::Union{Dict,Nothing}=nothing)
+    # Mock start_call function to match the new API format
+    function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dict(), display_name::String="")
+        # Generate unique identifiers
         id = string(uuid4())
-        trace_id = isnothing(trace_id) ? string(uuid4()) : trace_id
-        started_at = isnothing(started_at) ? format_iso8601(now(UTC)) : started_at
+        trace_id = string(uuid4())
+        started_at = format_iso8601(now(UTC))
 
+        # Format op_name to include entity/project with weave:/// prefix
+        formatted_op_name = "weave:///anim-mina/slide-comprehension-plain-ocr/$op_name"
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+        merged_attributes = merge(system_metadata, attributes)
+
+        # Create call data with flattened structure
         call_data = Dict{String,Any}(
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
             "id" => id,
+            "op_name" => formatted_op_name,
+            "display_name" => isempty(display_name) ? op_name : display_name,
             "trace_id" => trace_id,
-            "started_at" => started_at
+            "parent_id" => nothing,
+            "started_at" => started_at,
+            "inputs" => inputs,
+            "attributes" => merged_attributes,
+            "wb_user_id" => nothing,
+            "wb_run_id" => nothing
         )
 
-        # Support both old and new parameter sets
-        if !isnothing(op_name)
-            call_data["op_name"] = op_name
-        end
-        if !isempty(model)
-            call_data["model"] = model
-        end
-        if !isnothing(inputs)
-            call_data["inputs"] = inputs
-        end
-        if !isnothing(attributes)
-            call_data["attributes"] = attributes
-        end
-        if !isnothing(metadata)
-            call_data["metadata"] = metadata
-        end
-
         push!(mock_results.start_calls, call_data)
-        return call_data
+        return id, trace_id, started_at
     end
 
-    function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="", outputs::Union{Nothing,Dict{String,Any}}=nothing, attributes::Dict{String,Any}=Dict{String,Any}())
+    function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="",
+                     outputs::Union{Nothing,Dict{String,Any}}=nothing,
+                     attributes::Dict{String,Any}=Dict{String,Any}(),
+                     trace_id::String=string(uuid4()),
+                     started_at::String=format_iso8601(now(UTC)))
         # Add a small sleep to ensure measurable time difference
         sleep(0.001)  # 1ms sleep
 
@@ -130,8 +151,18 @@ module MockAPI
 
         call_data = Dict{String,Any}(
             "id" => id,
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "trace_id" => trace_id,
+            "started_at" => started_at,
             "ended_at" => ended_at,
-            "attributes" => attributes
+            "attributes" => attributes,
+            "summary" => Dict(
+                "input_type" => "function_input",
+                "output_type" => "function_output",
+                "result" => outputs,
+                "status" => isnothing(error) ? "success" : "error",
+                "duration" => nothing
+            )
         )
 
         if !isnothing(error)
@@ -140,7 +171,6 @@ module MockAPI
             elseif error isa String
                 call_data["error"] = error
                 if contains(error, "DivideError")
-                    # Ensure the error type is properly captured for test verification
                     call_data["error_type"] = "DivideError"
                 end
             end

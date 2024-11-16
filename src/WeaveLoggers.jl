@@ -12,6 +12,7 @@ const WANDB_API_KEY = get(ENV, "WANDB_API_KEY", "")
 const PROJECT_ID = "demo-weaveloggers"
 const POSTPROCESS_INPUTS = Function[]
 const PREPROCESS_INPUTS = Function[]
+const WEAVE_SDK_VERSION = "0.1.0"  # Add SDK version constant
 
 # API Base URLs
 const WEAVE_API_BASE_URL = "https://trace.wandb.ai"
@@ -32,6 +33,23 @@ function format_iso8601(dt::DateTime)
     second = lpad(Dates.second(dt), 2, '0')
     ms = lpad(round(Int, Dates.value(Dates.Millisecond(dt)) % 1000), 3, '0')
     return "$(year)-$(month)-$(day)T$(hour):$(minute):$(second).$(ms)Z"
+end
+
+"""
+    get_system_metadata()
+
+Generate system metadata for Weave API calls.
+"""
+function get_system_metadata()
+    Dict(
+        "weave" => Dict(
+            "client_version" => WEAVE_SDK_VERSION,
+            "source" => "julia-client",
+            "os" => string(Sys.KERNEL),
+            "arch" => string(Sys.ARCH),
+            "julia_version" => string(VERSION)
+        )
+    )
 end
 
 """
@@ -128,8 +146,8 @@ using .Files: create_file, get_file_content
 using .Macros: @w, @wtable, @wfile  # Export all macros
 
 # Export core functionality
-export weave_api, format_iso8601
-export WANDB_API_KEY, PROJECT_ID, POSTPROCESS_INPUTS, PREPROCESS_INPUTS
+export weave_api, format_iso8601, get_system_metadata
+export WANDB_API_KEY, PROJECT_ID, POSTPROCESS_INPUTS, PREPROCESS_INPUTS, WEAVE_SDK_VERSION
 
 # Re-export API functions
 export start_call, end_call, update_call, delete_call, read_call
