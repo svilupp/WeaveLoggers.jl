@@ -120,31 +120,19 @@ macro w(args...)
             )
         )
 
-        # Execute the function with detailed error handling
+        # Execute the function with minimal error handling
         local result = try
             $(esc(expr))
         catch e
-            # Capture detailed error information
-            local bt = catch_backtrace()
-            local error_msg = sprint() do io
-                showerror(io, e)
-                println(io)
-                Base.show_backtrace(io, bt)
-            end
-
-            # End the call with error information
+            # End the call and rethrow immediately without wrapping
             end_call(
                 call_id,
-                error=error_msg,
-                ended_at=format_iso8601(now(UTC)),
-                outputs=nothing,  # No outputs on error
-                attributes=Dict{String,Any}(
-                    "expression" => $expr_str,
-                    "error_type" => string(typeof(e)),
-                    "duration_ns" => time_ns() - start_time_ns
-                )
+                trace_id=trace_id,
+                started_at=format_iso8601(start_time),
+                error=Dict("message" => sprint(showerror, e)),  # Just pass the error message directly
+                outputs=nothing  # No outputs on error
             )
-            rethrow(e)
+            rethrow(e)  # Rethrow immediately without additional wrapping
         end
 
         # Calculate duration with nanosecond precision
