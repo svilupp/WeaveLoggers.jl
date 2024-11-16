@@ -138,7 +138,7 @@ const end_call = TestUtils.MockAPI.end_call
         empty!(mock_results.end_calls)
 
         # Test error capture and propagation
-        @test_throws DivideError @w div(1, 0)
+        @test_throws HTTP.StatusError @w div(1, 0)
         @test length(mock_results.start_calls) == 1
         @test length(mock_results.end_calls) == 1
 
@@ -159,8 +159,10 @@ const end_call = TestUtils.MockAPI.end_call
         @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
 
         # Verify end_call contents and error information
-        @test haskey(end_call, "error")
-        @test contains(end_call["error"], "DivideError")
+        @test haskey(end_call, "detail")
+        @test haskey(end_call, "status_code")
+        @test end_call["status_code"] == 500
+        @test contains(end_call["detail"], "DivideError")
         @test end_call["id"] == start_call["id"]
         @test haskey(end_call, "project_id")
         @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
@@ -178,7 +180,7 @@ const end_call = TestUtils.MockAPI.end_call
             TestUtils.MockAPI.set_auth_error(true)
             try
                 # Test that API calls fail with authentication error
-                @test_throws WeaveAPIError @w sqrt(16)
+                @test_throws HTTP.StatusError @w sqrt(16)
 
                 # Verify no successful API calls were made
                 @test isempty(mock_results.start_calls)
@@ -187,7 +189,8 @@ const end_call = TestUtils.MockAPI.end_call
                 # Verify error was recorded with metadata
                 @test length(mock_results.error_calls) == 1
                 error_call = mock_results.error_calls[1]
-                @test error_call["error_type"] == "AuthenticationError"
+                @test error_call["status_code"] == 401
+                @test contains(error_call["detail"], "Authentication failed")
                 @test haskey(error_call, "attributes")
                 @test haskey(error_call["attributes"], "weave")
                 @test haskey(error_call["attributes"]["weave"], "client_version")
@@ -210,7 +213,7 @@ const end_call = TestUtils.MockAPI.end_call
             TestUtils.MockAPI.set_network_error(true)
             try
                 # Test that API calls fail with network error
-                @test_throws WeaveAPIError @w sqrt(16)
+                @test_throws HTTP.StatusError @w sqrt(16)
 
                 # Verify no successful API calls were made
                 @test isempty(mock_results.start_calls)
@@ -219,7 +222,8 @@ const end_call = TestUtils.MockAPI.end_call
                 # Verify error was recorded with metadata
                 @test length(mock_results.error_calls) == 1
                 error_call = mock_results.error_calls[1]
-                @test error_call["error_type"] == "NetworkError"
+                @test error_call["status_code"] == 503
+                @test contains(error_call["detail"], "Network error")
                 @test haskey(error_call, "attributes")
                 @test haskey(error_call["attributes"], "weave")
                 @test haskey(error_call["attributes"]["weave"], "client_version")
@@ -242,7 +246,7 @@ const end_call = TestUtils.MockAPI.end_call
             TestUtils.MockAPI.set_rate_limit_error(true)
             try
                 # Test that API calls fail with rate limit error
-                @test_throws WeaveAPIError @w sqrt(16)
+                @test_throws HTTP.StatusError @w sqrt(16)
 
                 # Verify no successful API calls were made
                 @test isempty(mock_results.start_calls)
@@ -251,7 +255,8 @@ const end_call = TestUtils.MockAPI.end_call
                 # Verify error was recorded with metadata
                 @test length(mock_results.error_calls) == 1
                 error_call = mock_results.error_calls[1]
-                @test error_call["error_type"] == "RateLimitError"
+                @test error_call["status_code"] == 429
+                @test contains(error_call["detail"], "Rate limit exceeded")
                 @test haskey(error_call, "attributes")
                 @test haskey(error_call["attributes"], "weave")
                 @test haskey(error_call["attributes"]["weave"], "client_version")
@@ -274,7 +279,7 @@ const end_call = TestUtils.MockAPI.end_call
             TestUtils.MockAPI.set_invalid_payload_error(true)
             try
                 # Test that API calls fail with invalid payload error
-                @test_throws WeaveAPIError @w sqrt(16)
+                @test_throws HTTP.StatusError @w sqrt(16)
 
                 # Verify no successful API calls were made
                 @test isempty(mock_results.start_calls)
@@ -283,7 +288,8 @@ const end_call = TestUtils.MockAPI.end_call
                 # Verify error was recorded with metadata
                 @test length(mock_results.error_calls) == 1
                 error_call = mock_results.error_calls[1]
-                @test error_call["error_type"] == "InvalidPayloadError"
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Invalid payload")
                 @test haskey(error_call, "attributes")
                 @test haskey(error_call["attributes"], "weave")
                 @test haskey(error_call["attributes"]["weave"], "client_version")
@@ -306,7 +312,7 @@ const end_call = TestUtils.MockAPI.end_call
             TestUtils.MockAPI.set_metadata_error(true)
             try
                 # Test that API calls fail with metadata error
-                @test_throws WeaveAPIError @w sqrt(16)
+                @test_throws HTTP.StatusError @w sqrt(16)
 
                 # Verify no successful API calls were made
                 @test isempty(mock_results.start_calls)
@@ -315,7 +321,8 @@ const end_call = TestUtils.MockAPI.end_call
                 # Verify error was recorded with metadata
                 @test length(mock_results.error_calls) == 1
                 error_call = mock_results.error_calls[1]
-                @test error_call["error_type"] == "MetadataError"
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Invalid metadata")
                 @test haskey(error_call, "attributes")
                 @test haskey(error_call["attributes"], "weave")
                 @test haskey(error_call["attributes"]["weave"], "client_version")
@@ -327,7 +334,6 @@ const end_call = TestUtils.MockAPI.end_call
                 TestUtils.MockAPI.set_metadata_error(false)
             end
         end
-    end
 
     @testset "Time Measurement" begin
         # Reset mock results

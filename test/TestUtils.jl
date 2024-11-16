@@ -90,90 +90,20 @@ module MockAPI
         headers = ["Content-Type" => "application/json"]
 
         if error_states[:auth_error]
-            error_data = Dict{String,Any}(
-                "error" => "Authentication failed",
-                "error_type" => "AuthenticationError",
-                "endpoint" => endpoint,
-                "attributes" => Dict(
-                    "weave" => Dict(
-                        "client_version" => "0.1.0",
-                        "source" => "julia-client",
-                        "os" => string(Sys.KERNEL),
-                        "arch" => string(Sys.ARCH),
-                        "julia_version" => string(VERSION)
-                    )
-                )
-            )
+            error_response = Dict{String,Any}("detail" => "Authentication failed", "status_code" => 401)
             status_code = 401
-            error_response = error_data
         elseif error_states[:network_error]
-            error_data = Dict{String,Any}(
-                "error" => "Network connection failed",
-                "error_type" => "NetworkError",
-                "endpoint" => endpoint,
-                "attributes" => Dict(
-                    "weave" => Dict(
-                        "client_version" => "0.1.0",
-                        "source" => "julia-client",
-                        "os" => string(Sys.KERNEL),
-                        "arch" => string(Sys.ARCH),
-                        "julia_version" => string(VERSION)
-                    )
-                )
-            )
+            error_response = Dict{String,Any}("detail" => "Service temporarily unavailable", "status_code" => 503)
             status_code = 503
-            error_response = error_data
         elseif error_states[:rate_limit_error]
-            error_data = Dict{String,Any}(
-                "error" => "Rate limit exceeded",
-                "error_type" => "RateLimitError",
-                "endpoint" => endpoint,
-                "attributes" => Dict(
-                    "weave" => Dict(
-                        "client_version" => "0.1.0",
-                        "source" => "julia-client",
-                        "os" => string(Sys.KERNEL),
-                        "arch" => string(Sys.ARCH),
-                        "julia_version" => string(VERSION)
-                    )
-                )
-            )
+            error_response = Dict{String,Any}("detail" => "Too many requests", "status_code" => 429)
             status_code = 429
-            error_response = error_data
         elseif error_states[:invalid_payload_error]
-            error_data = Dict{String,Any}(
-                "error" => "Invalid payload format",
-                "error_type" => "InvalidPayloadError",
-                "endpoint" => endpoint,
-                "attributes" => Dict(
-                    "weave" => Dict(
-                        "client_version" => "0.1.0",
-                        "source" => "julia-client",
-                        "os" => string(Sys.KERNEL),
-                        "arch" => string(Sys.ARCH),
-                        "julia_version" => string(VERSION)
-                    )
-                )
-            )
+            error_response = Dict{String,Any}("detail" => "Invalid request payload", "status_code" => 400)
             status_code = 400
-            error_response = error_data
         elseif error_states[:metadata_error]
-            error_data = Dict{String,Any}(
-                "error" => "Missing required metadata",
-                "error_type" => "MetadataError",
-                "endpoint" => endpoint,
-                "attributes" => Dict(
-                    "weave" => Dict(
-                        "client_version" => "0.1.0",
-                        "source" => "julia-client",
-                        "os" => string(Sys.KERNEL),
-                        "arch" => string(Sys.ARCH),
-                        "julia_version" => string(VERSION)
-                    )
-                )
-            )
+            error_response = Dict{String,Any}("detail" => "Missing required metadata", "status_code" => 400)
             status_code = 400
-            error_response = error_data
         end
 
         if !isnothing(error_response)
@@ -311,12 +241,11 @@ module MockAPI
 
         if !isnothing(error)
             if error isa Dict
-                call_data["error"] = error
+                call_data["detail"] = error["detail"]
+                call_data["status_code"] = error["status_code"]
             elseif error isa String
-                call_data["error"] = error
-                if contains(error, "DivideError")
-                    call_data["error_type"] = "DivideError"
-                end
+                call_data["detail"] = error
+                call_data["status_code"] = 500  # Internal error for runtime errors
             end
         end
 
@@ -332,7 +261,11 @@ module MockAPI
     function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
         # Handle non-Tables.jl-compatible data first
         if !(Tables.istable(data) || data isa DataFrame)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
+            error_response = Dict{String,Any}("detail" => "Data must be Tables.jl-compatible", "status_code" => 400)
+            headers = ["Content-Type" => "application/json"]
+            response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+            push!(mock_results.error_calls, error_response)
+            throw(HTTP.StatusError(400, "POST", "/table/create", response))
         end
 
         # Add system metadata
@@ -368,7 +301,11 @@ module MockAPI
 
     # Method for handling non-Tables.jl-compatible data with explicit error
     function create_table(name::String, data::Symbol, tags::Vector{Symbol}=Symbol[])
-        throw(ArgumentError("Data must be Tables.jl-compatible"))
+        error_response = Dict{String,Any}("detail" => "Data must be Tables.jl-compatible", "status_code" => 400)
+        headers = ["Content-Type" => "application/json"]
+        response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+        push!(mock_results.error_calls, error_response)
+        throw(HTTP.StatusError(400, "POST", "/table/create", response))
     end
 
     # Mock create_file function with unified handling for all tag types
@@ -381,7 +318,11 @@ module MockAPI
 
         # Check if file exists
         if !isfile(path)
-            throw(ArgumentError("File does not exist: $path"))
+            error_response = Dict{String,Any}("detail" => "File does not exist: $path", "status_code" => 400)
+            headers = ["Content-Type" => "application/json"]
+            response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+            push!(mock_results.error_calls, error_response)
+            throw(HTTP.StatusError(400, "POST", "/file/create", response))
         end
 
         # Convert empty vector to Symbol[] to avoid type issues
