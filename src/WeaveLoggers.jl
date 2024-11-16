@@ -9,7 +9,7 @@ using Statistics
 
 # Global variables
 const WANDB_API_KEY = get(ENV, "WANDB_API_KEY", "")
-const PROJECT_ID = "demo-weaveloggers"
+const PROJECT_ID = "anim-mina/slide-comprehension-plain-ocr"  # Update to match our test environment
 const POSTPROCESS_INPUTS = Function[]
 const PREPROCESS_INPUTS = Function[]
 const WEAVE_SDK_VERSION = "0.1.0"  # Add SDK version constant
