@@ -93,6 +93,9 @@ success = end_call(call_id,
 For more details, see: https://weave-docs.wandb.ai/reference/service-api/call-end-call-end-post
 """
 function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Dict}=nothing, trace_id::String, started_at::String)
+    # Get system metadata for consistency
+    system_metadata = get_system_metadata()
+
     # Create flattened payload structure as required by API
     body = Dict{String,Any}(
         "project_id" => PROJECT_ID,
@@ -102,6 +105,7 @@ function end_call(call_id::String; outputs::Dict=Dict(), error::Union{Nothing,Di
         "ended_at" => format_iso8601(now(UTC)),
         "outputs" => outputs,
         "error" => error,
+        "attributes" => system_metadata,  # Include system metadata in end call
         "summary" => Dict(
             "input_type" => "function_input",
             "output_type" => "function_output",
@@ -137,11 +141,15 @@ success = update_call(call_id,
 For more details, see: https://weave-docs.wandb.ai/reference/service-api/call-update-call-update-post
 """
 function update_call(call_id::String; attributes::Dict)
+    # Get system metadata and merge with provided attributes
+    system_metadata = get_system_metadata()
+    merged_attributes = merge(system_metadata, attributes)
+
     # Create flattened payload structure as required by API
     body = Dict{String,Any}(
         "project_id" => PROJECT_ID,
         "id" => call_id,
-        "attributes" => attributes
+        "attributes" => merged_attributes
     )
     weave_api("POST", "/call/update", body)
     return true
