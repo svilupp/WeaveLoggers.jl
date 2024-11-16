@@ -36,8 +36,8 @@ function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dic
     started_at = format_iso8601(now(UTC))
 
     # Format op_name to include entity/project
-    entity, project = split(PROJECT_ID, "/")
-    formatted_op_name = "weave:///$entity/$project/$op_name"
+    # Simplified op_name format to match Python implementation
+    formatted_op_name = "weave:///$PROJECT_ID/$op_name"
 
     # Get system metadata and merge with provided attributes
     system_metadata = get_system_metadata()
