@@ -5,11 +5,14 @@ using Dates
 using DataFrames
 using Tables
 
-# Load test utilities first to ensure mock implementations are available
+# Import WeaveLoggers first to ensure error types are available
+using WeaveLoggers
+
+# Load test utilities after WeaveLoggers to ensure all types are available
 include("TestUtils.jl")
 using .TestUtils
 
-# Import WeaveLoggers after TestUtils to allow proper mocking
+# Re-import WeaveLoggers to allow proper mocking
 using WeaveLoggers
 
 # Define test-specific methods for WeaveLoggers functions
