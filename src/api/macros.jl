@@ -6,7 +6,7 @@ and API integration capabilities.
 """
 module Macros
 
-using ..WeaveLoggers: format_iso8601
+using ..WeaveLoggers: format_iso8601, PROJECT_ID, get_system_metadata
 using ..WeaveLoggers.Calls: start_call, end_call
 using ..WeaveLoggers.Tables: create_table
 using ..WeaveLoggers.Files: create_file
@@ -101,16 +101,19 @@ macro w(args...)
         start_call(
             call_id,
             trace_id=trace_id,
-            op_name=$(esc(op_name)),
+            op_name="weave:///$PROJECT_ID/$(esc(op_name))",
             started_at=format_iso8601(start_time),
             inputs=Dict(
                 "args" => input_args,
                 "types" => input_types,
                 "code" => $expr_str
             ),
-            attributes=Dict{String,Any}(
-                "tags" => $tags,
-                "expression" => $expr_str
+            attributes=merge(
+                get_system_metadata(),
+                Dict{String,Any}(
+                    "tags" => $tags,
+                    "expression" => $expr_str
+                )
             )
         )
 

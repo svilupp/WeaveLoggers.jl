@@ -30,6 +30,8 @@ mutable struct MockAPIResults
     end_calls::Vector{Dict{String,Any}}
     table_calls::Vector{Dict{String,Any}}
     file_calls::Vector{Dict{String,Any}}
+    object_calls::Vector{Dict{String,Any}}
+    error_calls::Vector{Dict{String,Any}}  # Add error_calls tracking
 end
 
 # Initialize mock results with explicit type parameters
@@ -37,7 +39,9 @@ const mock_results = MockAPIResults(
     Vector{Dict{String,Any}}(),
     Vector{Dict{String,Any}}(),
     Vector{Dict{String,Any}}(),
-    Vector{Dict{String,Any}}()
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}()  # Initialize error_calls
 )
 
 # Mock API Module
@@ -45,12 +49,135 @@ module MockAPI
     using ..TestUtils: mock_results
     using UUIDs
     using Dates
-    using WeaveLoggers: format_iso8601
+    using WeaveLoggers: format_iso8601, WeaveAPIError
     using DataFrames, Tables
+
+    # Error simulation state
+    const error_states = Dict{Symbol,Bool}(
+        :auth_error => false,
+        :network_error => false,
+        :rate_limit_error => false,
+        :invalid_payload_error => false,
+        :metadata_error => false
+    )
+
+    # Error simulation control functions
+    function set_auth_error(state::Bool)
+        error_states[:auth_error] = state
+    end
+
+    function set_network_error(state::Bool)
+        error_states[:network_error] = state
+    end
+
+    function set_rate_limit_error(state::Bool)
+        error_states[:rate_limit_error] = state
+    end
+
+    function set_invalid_payload_error(state::Bool)
+        error_states[:invalid_payload_error] = state
+    end
+
+    function set_metadata_error(state::Bool)
+        error_states[:metadata_error] = state
+    end
+
+    # Error handling helper function
+    function check_for_errors(endpoint::String)
+        if error_states[:auth_error]
+            error_data = Dict{String,Any}(
+                "error" => "Authentication failed",
+                "error_type" => "AuthenticationError",
+                "endpoint" => endpoint,
+                "attributes" => Dict(
+                    "weave" => Dict(
+                        "client_version" => "0.1.0",
+                        "source" => "julia-client",
+                        "os" => string(Sys.KERNEL),
+                        "arch" => string(Sys.ARCH),
+                        "julia_version" => string(VERSION)
+                    )
+                )
+            )
+            push!(mock_results.error_calls, error_data)
+            throw(WeaveAPIError("Authentication failed", 401))
+        elseif error_states[:network_error]
+            error_data = Dict{String,Any}(
+                "error" => "Network connection failed",
+                "error_type" => "NetworkError",
+                "endpoint" => endpoint,
+                "attributes" => Dict(
+                    "weave" => Dict(
+                        "client_version" => "0.1.0",
+                        "source" => "julia-client",
+                        "os" => string(Sys.KERNEL),
+                        "arch" => string(Sys.ARCH),
+                        "julia_version" => string(VERSION)
+                    )
+                )
+            )
+            push!(mock_results.error_calls, error_data)
+            throw(WeaveAPIError("Network connection failed", 503))
+        elseif error_states[:rate_limit_error]
+            error_data = Dict{String,Any}(
+                "error" => "Rate limit exceeded",
+                "error_type" => "RateLimitError",
+                "endpoint" => endpoint,
+                "attributes" => Dict(
+                    "weave" => Dict(
+                        "client_version" => "0.1.0",
+                        "source" => "julia-client",
+                        "os" => string(Sys.KERNEL),
+                        "arch" => string(Sys.ARCH),
+                        "julia_version" => string(VERSION)
+                    )
+                )
+            )
+            push!(mock_results.error_calls, error_data)
+            throw(WeaveAPIError("Rate limit exceeded", 429))
+        elseif error_states[:invalid_payload_error]
+            error_data = Dict{String,Any}(
+                "error" => "Invalid payload format",
+                "error_type" => "InvalidPayloadError",
+                "endpoint" => endpoint,
+                "attributes" => Dict(
+                    "weave" => Dict(
+                        "client_version" => "0.1.0",
+                        "source" => "julia-client",
+                        "os" => string(Sys.KERNEL),
+                        "arch" => string(Sys.ARCH),
+                        "julia_version" => string(VERSION)
+                    )
+                )
+            )
+            push!(mock_results.error_calls, error_data)
+            throw(WeaveAPIError("Invalid payload format", 400))
+        elseif error_states[:metadata_error]
+            error_data = Dict{String,Any}(
+                "error" => "Missing required metadata",
+                "error_type" => "MetadataError",
+                "endpoint" => endpoint,
+                "attributes" => Dict(
+                    "weave" => Dict(
+                        "client_version" => "0.1.0",
+                        "source" => "julia-client",
+                        "os" => string(Sys.KERNEL),
+                        "arch" => string(Sys.ARCH),
+                        "julia_version" => string(VERSION)
+                    )
+                )
+            )
+            push!(mock_results.error_calls, error_data)
+            throw(WeaveAPIError("Missing required metadata", 400))
+        end
+    end
 
     # Mock weave_api function to bypass actual API calls
     function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
                       base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
+        # Check for simulated errors before processing any endpoint
+        check_for_errors(endpoint)
+
         # Mock API key for testing - bypass the API key check entirely
         ENV["WANDB_API_KEY"] = "mock-api-key-for-testing"
 
@@ -191,11 +318,27 @@ module MockAPI
             throw(ArgumentError("Data must be Tables.jl-compatible"))
         end
 
-        # Create table data dictionary
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
+        # Create table data dictionary with proper formatting
         table_data = Dict{String,Any}(
             "name" => name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_table",
             "data" => data,
-            "tags" => tags
+            "tags" => tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
         )
         push!(mock_results.table_calls, table_data)
         return table_data
@@ -226,10 +369,27 @@ module MockAPI
 
         # Convert empty vector to Symbol[] to avoid type issues
         actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
         file_data = Dict{String,Any}(
             "name" => isnothing(name) ? basename(path) : name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_file",
             "path" => path,
-            "tags" => actual_tags
+            "tags" => actual_tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
         )
         push!(mock_results.file_calls, file_data)
         return file_data
@@ -240,6 +400,42 @@ module MockAPI
         create_file(name, path, collect(tags))
     end
 
+    # Mock create_object function with unified handling for all tag types
+    function create_object(name::String, obj::Any, tags::Vector{Symbol}=Symbol[])
+        # Convert empty vector to Symbol[] to avoid type issues
+        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
+        # Create object data dictionary with proper formatting
+        object_data = Dict{String,Any}(
+            "name" => name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_object",
+            "data" => string(obj),  # Convert object to string representation
+            "tags" => actual_tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
+        )
+        push!(mock_results.object_calls, object_data)
+        return object_data
+    end
+
+    # Convenience method for variadic tags
+    function create_object(name::String, obj::Any, tags::Symbol...)
+        create_object(name, obj, collect(tags))
+    end
+
 end # module MockAPI
 
 # Override WeaveLoggers API functions with mock versions
@@ -248,9 +444,10 @@ const start_call = MockAPI.start_call
 const end_call = MockAPI.end_call
 const create_table = MockAPI.create_table
 const create_file = MockAPI.create_file
+const create_object = MockAPI.create_object
 
 # Export everything
 export TestType, setup_test_data, MockAPIResults, mock_results, MockAPI
-export weave_api, start_call, end_call, create_table, create_file
+export weave_api, start_call, end_call, create_table, create_file, create_object
 
 end

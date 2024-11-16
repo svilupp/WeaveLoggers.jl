@@ -1,47 +1,123 @@
 using WeaveLoggers
+using Test
 using Dates
+using UUIDs
+using HTTP
+using JSON3
 
-# Set up the project ID and operation name
+# Enable debug logging
+ENV["WEAVE_DEBUG_HTTP"] = "1"
+
 const PROJECT_ID = "anim-mina/slide-comprehension-plain-ocr"
-const OP_NAME = "test_operation"
+const BASE_URL = "https://trace.wandb.ai"
 
-function test_api_calls()
-    println("Starting API verification test...")
-
-    # Start a call
-    println("\nTesting start_call...")
-    call_id, trace_id, started_at = WeaveLoggers.Calls.start_call(
-        op_name=OP_NAME,
-        inputs=Dict("test_input" => "hello"),
-        attributes=Dict("test_attribute" => "world")
-    )
-    println("Call started successfully: ", call_id)
-
-    # Update the call
-    println("\nTesting update_call...")
-    WeaveLoggers.Calls.update_call(
-        call_id,
-        attributes=Dict("updated_attribute" => "updated_value")
-    )
-    println("Call updated successfully")
-
-    # End the call
-    println("\nTesting end_call...")
-    WeaveLoggers.Calls.end_call(
-        call_id,
-        outputs=Dict("test_output" => "goodbye"),
-        trace_id=trace_id,
-        started_at=started_at
-    )
-    println("Call ended successfully")
-
-    println("\nAPI verification test completed successfully!")
+function print_response_details(response)
+    println("\nResponse Details:")
+    println("Status: ", response.status)
+    println("Headers:")
+    for (key, value) in response.headers
+        println("  $key: $value")
+    end
+    println("Body: ", String(response.body))
 end
 
-# Run the test
+function test_direct_api_calls()
+    println("\n=== Testing Direct API Calls ===")
+
+    # Generate unique identifiers
+    call_id = string(uuid4())
+    trace_id = string(uuid4())
+    started_at = Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SS.sssZ")
+
+    # Prepare start call payload (matching SDK format exactly)
+    start_payload = Dict{String,Any}(
+        "project_id" => PROJECT_ID,
+        "id" => call_id,
+        "op_name" => "weave:///$PROJECT_ID/test_operation",
+        "display_name" => "test_operation",
+        "trace_id" => trace_id,
+        "parent_id" => nothing,
+        "started_at" => started_at,
+        "attributes" => Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        ),
+        "inputs" => Dict("test_input" => "test_value"),
+        "wb_user_id" => nothing,
+        "wb_run_id" => nothing
+    )
+
+    # Make start call
+    println("\n=== Testing call/start endpoint ===")
+    headers = [
+        "Content-Type" => "application/json",
+        "Accept" => "application/json"
+    ]
+    auth = ("api", ENV["WANDB_API_KEY"])  # Use environment variable directly
+
+    start_response = HTTP.post(
+        "$BASE_URL/call/start",
+        headers,
+        JSON3.write(start_payload);
+        basic_auth=auth,
+        status_exception=false
+    )
+    print_response_details(start_response)
+    @test start_response.status == 200
+
+    # Sleep to simulate work
+    sleep(0.1)
+
+    # Prepare end call payload
+    end_payload = Dict{String,Any}(
+        "id" => call_id,
+        "project_id" => PROJECT_ID,
+        "trace_id" => trace_id,
+        "started_at" => started_at,
+        "ended_at" => Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SS.sssZ"),
+        "attributes" => Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        ),
+        "outputs" => Dict("result" => "test_output"),
+        "summary" => Dict(
+            "input_type" => "function_input",
+            "output_type" => "function_output",
+            "result" => Dict("test_output" => "value"),
+            "status" => "success",
+            "duration" => nothing
+        )
+    )
+
+    # Make end call
+    println("\n=== Testing call/end endpoint ===")
+    end_response = HTTP.post(
+        "$BASE_URL/call/end",
+        headers,
+        JSON3.write(end_payload);
+        basic_auth=auth,
+        status_exception=false
+    )
+    print_response_details(end_response)
+    @test end_response.status == 200
+end
+
+# Run verification with error handling
+println("\nStarting API verification...")
 try
-    test_api_calls()
+    test_direct_api_calls()
+    println("\nAPI verification completed successfully!")
 catch e
-    println("Error during API test: ", e)
+    println("\nError during API verification: ", e)
     rethrow(e)
 end
