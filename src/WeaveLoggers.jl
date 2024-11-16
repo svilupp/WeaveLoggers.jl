@@ -96,46 +96,34 @@ function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=n
         "Accept" => "application/json"
     ]
 
-    try
-        # Log the request details for debugging
-        @info "Making API request" method endpoint url body
+    # Log the request details for debugging
+    @debug "Making API request" method endpoint url body
 
-        # Make the API call
-        response = if isnothing(body)
-            HTTP.request(method, url, headers)
-        else
-            HTTP.request(method, url, headers, JSON3.write(body))
-        end
-
-        # Parse response
-        response_body = if !isempty(response.body)
-            parsed = JSON3.read(response.body)
-
-            # Process output if any postprocessing functions are defined
-            if !isempty(POSTPROCESS_INPUTS)
-                for f in POSTPROCESS_INPUTS
-                    parsed = f(parsed)
-                end
-            end
-
-            parsed
-        else
-            nothing
-        end
-
-        return response_body
-    catch e
-        if e isa HTTP.ExceptionRequest.StatusError
-            @error "API call failed" status=e.status response_body=String(e.response.body) exception=e
-        else
-            @error "API call failed" exception=e
-        end
-        rethrow(e)
+    # Make the API call and return the response
+    response = if isnothing(body)
+        HTTP.request(method, url, headers)
+    else
+        HTTP.request(method, url, headers, JSON3.write(body))
     end
+
+    # Parse and process response
+    if !isempty(response.body)
+        parsed = JSON3.read(response.body)
+
+        # Process output if any postprocessing functions are defined
+        if !isempty(POSTPROCESS_INPUTS)
+            for f in POSTPROCESS_INPUTS
+                parsed = f(parsed)
+            end
+        end
+
+        return parsed
+    end
+
+    return nothing
 end
 
 # Include API modules
-include("api/errors.jl")  # Include the new errors module first
 include("api/calls.jl")
 include("api/objects.jl")
 include("api/tables.jl")
@@ -152,7 +140,6 @@ using .Macros: @w, @wtable, @wfile  # Export all macros
 # Export core functionality
 export weave_api, format_iso8601, get_system_metadata
 export WANDB_API_KEY, PROJECT_ID, POSTPROCESS_INPUTS, PREPROCESS_INPUTS, WEAVE_SDK_VERSION
-export WeaveAPIError, ERROR_TYPE_MAP  # Export the new error types
 
 # Re-export API functions
 export start_call, end_call, update_call, delete_call, read_call

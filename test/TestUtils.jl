@@ -2,6 +2,7 @@ module TestUtils
 
 using WeaveLoggers
 using Dates, UUIDs, Tables, DataFrames
+using HTTP, JSON3
 
 # Test data structures
 struct TestType
@@ -49,8 +50,8 @@ module MockAPI
     using ..TestUtils: mock_results
     using UUIDs
     using Dates
-    using WeaveLoggers: format_iso8601, WeaveAPIError
-    using DataFrames, Tables
+    using WeaveLoggers: format_iso8601
+    using DataFrames, Tables, HTTP, JSON3
 
     # Error simulation state
     const error_states = Dict{Symbol,Bool}(
@@ -84,6 +85,10 @@ module MockAPI
 
     # Error handling helper function
     function check_for_errors(endpoint::String)
+        error_response = nothing
+        status_code = 200
+        headers = ["Content-Type" => "application/json"]
+
         if error_states[:auth_error]
             error_data = Dict{String,Any}(
                 "error" => "Authentication failed",
@@ -99,8 +104,8 @@ module MockAPI
                     )
                 )
             )
-            push!(mock_results.error_calls, error_data)
-            throw(WeaveAPIError("Authentication failed", 401))
+            status_code = 401
+            error_response = error_data
         elseif error_states[:network_error]
             error_data = Dict{String,Any}(
                 "error" => "Network connection failed",
@@ -116,8 +121,8 @@ module MockAPI
                     )
                 )
             )
-            push!(mock_results.error_calls, error_data)
-            throw(WeaveAPIError("Network connection failed", 503))
+            status_code = 503
+            error_response = error_data
         elseif error_states[:rate_limit_error]
             error_data = Dict{String,Any}(
                 "error" => "Rate limit exceeded",
@@ -133,8 +138,8 @@ module MockAPI
                     )
                 )
             )
-            push!(mock_results.error_calls, error_data)
-            throw(WeaveAPIError("Rate limit exceeded", 429))
+            status_code = 429
+            error_response = error_data
         elseif error_states[:invalid_payload_error]
             error_data = Dict{String,Any}(
                 "error" => "Invalid payload format",
@@ -150,8 +155,8 @@ module MockAPI
                     )
                 )
             )
-            push!(mock_results.error_calls, error_data)
-            throw(WeaveAPIError("Invalid payload format", 400))
+            status_code = 400
+            error_response = error_data
         elseif error_states[:metadata_error]
             error_data = Dict{String,Any}(
                 "error" => "Missing required metadata",
@@ -167,8 +172,20 @@ module MockAPI
                     )
                 )
             )
-            push!(mock_results.error_calls, error_data)
-            throw(WeaveAPIError("Missing required metadata", 400))
+            status_code = 400
+            error_response = error_data
+        end
+
+        if !isnothing(error_response)
+            # Create mock HTTP response
+            body = JSON3.write(error_response)
+            response = HTTP.Response(status_code, headers, body=body)
+
+            # Record the error for testing
+            push!(mock_results.error_calls, error_response)
+
+            # Throw HTTP.StatusError to match real API behavior
+            throw(HTTP.StatusError(status_code, "POST", endpoint, response))
         end
     end
 
