@@ -97,6 +97,9 @@ function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=n
     ]
 
     try
+        # Log the request details for debugging
+        @info "Making API request" method endpoint url body
+
         # Make the API call
         response = if isnothing(body)
             HTTP.request(method, url, headers)
