@@ -16,8 +16,7 @@ For more information, see: https://weave-docs.wandb.ai/reference/service-api
 module Calls
 
 using ..WeaveLoggers: weave_api, format_iso8601, PROJECT_ID, get_system_metadata, WEAVE_SDK_VERSION
-using Dates
-using UUIDs
+using Dates, UUIDs, SHA
 
 export start_call, end_call, update_call, delete_call, read_call
 
@@ -35,9 +34,10 @@ function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dic
     trace_id = string(uuid4())
     started_at = format_iso8601(now(UTC))
 
-    # Format op_name to include entity/project
-    # Simplified op_name format to match Python implementation
-    formatted_op_name = "weave:///$PROJECT_ID/$op_name"
+    # Format op_name to include entity/project and op path component
+    # Full format: weave:///{project_id}/op/{function_name}:{hash}
+    hash_value = bytes2hex(sha256(op_name)[1:4])  # Use first 4 bytes of SHA256 for shorter hash
+    formatted_op_name = "weave:///$PROJECT_ID/op/$op_name:$hash_value"
 
     # Get system metadata and merge with provided attributes
     system_metadata = get_system_metadata()

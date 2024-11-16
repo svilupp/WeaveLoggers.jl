@@ -101,7 +101,10 @@ macro w(args...)
         start_call(
             call_id,
             trace_id=trace_id,
-            op_name="weave:///$PROJECT_ID/$(esc(op_name))",
+            op_name=let
+                hash_value = bytes2hex(sha256(string($(esc(op_name))))[1:4])
+                "weave:///$PROJECT_ID/op/$(esc(op_name)):$hash_value"
+            end,
             started_at=format_iso8601(start_time),
             inputs=Dict(
                 "args" => input_args,
