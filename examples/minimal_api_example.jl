@@ -76,7 +76,7 @@ start_payload = Dict(
         "display_name" => nothing,
         "trace_id" => string(uuid4()),
         "parent_id" => nothing,
-        "started_at" => Dates.format(now(UTC), "yyyy-mm-dd\\THH:mm:ss.ssssssZ"),
+        "started_at" => let dt = now(UTC); string(year(dt), "-", lpad(month(dt),2,"0"), "-", lpad(day(dt),2,"0"), "T", lpad(hour(dt),2,"0"), ":", lpad(minute(dt),2,"0"), ":", lpad(second(dt),2,"0"), ".", lpad(round(Int, millisecond(dt) * 1000),6,"0"), "Z") end,
         "attributes" => Dict(
             "weave" => Dict(
                 "client_version" => "0.51.19",
@@ -108,7 +108,7 @@ if start_response.status == 200
         "end" => Dict(
             "project_id" => "$entity/$project",
             "id" => call_id,
-            "ended_at" => Dates.format(now(UTC), "yyyy-mm-dd\\THH:mm:ss.ssssssZ"),
+            "ended_at" => let dt = now(UTC); string(year(dt), "-", lpad(month(dt),2,"0"), "-", lpad(day(dt),2,"0"), "T", lpad(hour(dt),2,"0"), ":", lpad(minute(dt),2,"0"), ":", lpad(second(dt),2,"0"), ".", lpad(round(Int, millisecond(dt) * 1000),6,"0"), "Z") end,
             "outputs" => Dict(
                 "response" => "Test response",
                 "tokens" => 10,
