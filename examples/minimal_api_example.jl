@@ -73,11 +73,20 @@ start_payload = Dict(
         "project_id" => "$entity/$project",
         "id" => call_id,
         "op_name" => op_name,
-        "display_name" => "Test API Call",
-        "trace_id" => nothing,
+        "display_name" => nothing,
+        "trace_id" => string(uuid4()),
         "parent_id" => nothing,
-        "started_at" => replace(string(now(UTC)), "+" => "Z"),
-        "attributes" => Dict(),
+        "started_at" => Dates.format(now(UTC), "yyyy-mm-dd\\THH:mm:ss.uuuZ"),
+        "attributes" => Dict(
+            "weave" => Dict(
+                "client_version" => "0.51.19",
+                "source" => "julia-sdk",
+                "os_name" => get(ENV, "OS", "Linux"),
+                "os_version" => readchomp(`uname -v`),
+                "os_release" => readchomp(`uname -r`),
+                "sys_version" => string(VERSION)
+            )
+        ),
         "inputs" => Dict(
             "prompt" => "Hello, World!",
             "temperature" => 0.7
@@ -97,13 +106,16 @@ if start_response.status == 200
     # Create the end call payload
     end_payload = Dict(
         "end" => Dict(
-            "ended_at" => replace(string(now(UTC)), "+" => "Z"),
+            "project_id" => "$entity/$project",
+            "id" => call_id,
+            "ended_at" => Dates.format(now(UTC), "yyyy-mm-dd\\THH:mm:ss.uuuZ"),
             "outputs" => Dict(
                 "response" => "Test response",
                 "tokens" => 10,
                 "finish_reason" => "complete"
             ),
-            "error" => nothing
+            "exception" => nothing,
+            "summary" => Dict()
         )
     )
 
