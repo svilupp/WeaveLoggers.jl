@@ -76,7 +76,7 @@ start_payload = Dict(
         "display_name" => "Test API Call",
         "trace_id" => nothing,
         "parent_id" => nothing,
-        "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.000Z"),
+        "started_at" => replace(string(now(UTC)), "+" => "Z"),
         "attributes" => Dict(),
         "inputs" => Dict(
             "prompt" => "Hello, World!",
@@ -97,7 +97,7 @@ if start_response.status == 200
     # Create the end call payload
     end_payload = Dict(
         "end" => Dict(
-            "ended_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.000Z"),
+            "ended_at" => replace(string(now(UTC)), "+" => "Z"),
             "outputs" => Dict(
                 "response" => "Test response",
                 "tokens" => 10,
