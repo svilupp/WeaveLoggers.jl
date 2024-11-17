@@ -3,6 +3,7 @@ using Test
 using Dates
 using JSON3
 using HTTP
+using SHA
 
 # Mock API results structure
 mutable struct MockWeaveAPI
@@ -63,12 +64,13 @@ end
         "project_id" => "anim-mina/test-project",
         "display_name" => "Test Call",
         "wb_run_id" => "test-run-$(round(Int, time()))",
-        "test" => "true"
+        "test" => "true",
+        "op_name" => "weave:///anim-mina/test-project/op/test_function:$(bytes2hex(sha256("test_function")[1:4]))"
     )
 
     # Start a call with all required fields
     @info "Starting call with test data..."
-    call_id = start_call(
+    call_id = WeaveLoggers.start_call(
         model="test-model",
         inputs=Dict{String,String}(
             "prompt" => "Hello, World!",
@@ -83,7 +85,7 @@ end
     @test length(call_id) > 0
 
     # End the call with complete information
-    success = end_call(
+    success = WeaveLoggers.end_call(
         call_id,
         outputs=Dict(
             "response" => "Test response",
@@ -95,7 +97,7 @@ end
     @test success == true
 
     # Read and verify the call data
-    call_data = read_call(call_id)
+    call_data = WeaveLoggers.read_call(call_id)
     @test !isnothing(call_data)
 
     # Verify the structure matches our implementation
