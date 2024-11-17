@@ -16,9 +16,11 @@ using .TestUtils
 using WeaveLoggers
 
 # Define test-specific methods for WeaveLoggers functions
-function WeaveLoggers.weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
-                               base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
-    TestUtils.MockAPI.weave_api(method, endpoint, body; base_url=base_url, query_params=query_params)
+function WeaveLoggers.weave_api(
+        method::String, endpoint::String, body::Union{Dict, Nothing} = nothing;
+        base_url::String = "", query_params::Dict{String, String} = Dict{String, String}())
+    TestUtils.MockAPI.weave_api(
+        method, endpoint, body; base_url = base_url, query_params = query_params)
 end
 
 # Define test-specific methods for API functions used by macros
@@ -30,11 +32,13 @@ function WeaveLoggers.Calls.end_call(id::String; kwargs...)
     TestUtils.MockAPI.end_call(id; kwargs...)
 end
 
-function WeaveLoggers.create_table(name::String, data::DataFrame, tags::Vector{Symbol}=Symbol[])
+function WeaveLoggers.create_table(
+        name::String, data::DataFrame, tags::Vector{Symbol} = Symbol[])
     TestUtils.MockAPI.create_table(name, data, tags)
 end
 
-function WeaveLoggers.create_table(name::String, data::T, tags::Vector{Symbol}=Symbol[]) where {T}
+function WeaveLoggers.create_table(
+        name::String, data::T, tags::Vector{Symbol} = Symbol[]) where {T}
     if Tables.istable(data)
         TestUtils.MockAPI.create_table(name, data, tags)
     else
@@ -47,11 +51,13 @@ function WeaveLoggers.create_table(name::String, data::Any, tags::Symbol...)
     WeaveLoggers.create_table(name, data, collect(tags))
 end
 
-function WeaveLoggers.create_table(name::String, data::Symbol, tags::Vector{Symbol}=Symbol[])
+function WeaveLoggers.create_table(
+        name::String, data::Symbol, tags::Vector{Symbol} = Symbol[])
     throw(ArgumentError("Data must be Tables.jl-compatible"))
 end
 
-function WeaveLoggers.Files.create_file(name::String, path::Union{String,Nothing}, tags::Vector{Symbol}=Symbol[])
+function WeaveLoggers.Files.create_file(
+        name::String, path::Union{String, Nothing}, tags::Vector{Symbol} = Symbol[])
     TestUtils.MockAPI.create_file(name, path, tags)
 end
 
@@ -62,6 +68,8 @@ empty!(mock_results.table_calls)
 empty!(mock_results.file_calls)
 
 @testset "WeaveLoggers.jl" begin
+    include("test_utils.jl")
+
     # Run macro tests first (these use mock API functions)
     @testset "Macro Tests" begin
         include("test_macros.jl")
@@ -79,6 +87,6 @@ empty!(mock_results.file_calls)
     # Then run code quality tests
     @testset "Code quality (Aqua.jl)" begin
         # Skip ambiguities test as they are in external packages
-        Aqua.test_all(WeaveLoggers; ambiguities=false)
+        Aqua.test_all(WeaveLoggers; ambiguities = false)
     end
 end
