@@ -3,6 +3,10 @@ using JSON3
 using SHA
 using Dates
 using UUIDs
+using Base64
+
+# Import specific HTTP utilities
+import HTTP: request, StatusError, Response
 
 # Configuration
 const WEAVE_API_BASE_URL = "https://trace.wandb.ai"
@@ -21,12 +25,16 @@ ENV["JULIA_DEBUG"] = "HTTP"
 
 # Helper function to make API calls
 function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing)
+    # Prepare URL and headers
     url = WEAVE_API_BASE_URL * endpoint
-    headers = Dict(
+
+    # Create authorization header
+    auth_string = base64encode("api:$api_key")
+    headers = HTTP.Headers([
         "Content-Type" => "application/json",
         "Accept" => "application/json",
-        "Authorization" => HTTP.basic("api", api_key)
-    )
+        "Authorization" => "Basic $auth_string"
+    ])
 
     # Print request details
     println("\n=== REQUEST ===")
@@ -36,7 +44,7 @@ function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=n
     println("Auth: Basic api:$(api_key[1:4])...")
     println("Body: ", isnothing(body) ? "None" : JSON3.write(body))
 
-    # Make the request with basic auth
+    # Make the request
     response = if isnothing(body)
         HTTP.request(method, url, headers; status_exception=false)
     else
