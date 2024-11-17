@@ -8,7 +8,16 @@ using UUIDs
 const WEAVE_API_BASE_URL = "https://trace.wandb.ai"
 const entity = "anim-mina"
 const project = "slide-comprehension-plain-ocr"
-const api_key = ENV["WANDB_API_KEY"]
+const api_key = get(ENV, "WANDB_API_KEY", nothing)
+
+# Verify API key
+if isnothing(api_key)
+    error("WANDB_API_KEY environment variable is not set")
+end
+println("API Key (first 4 chars): ", api_key[1:4], "...")
+
+# Enable HTTP debugging
+ENV["JULIA_DEBUG"] = "HTTP"
 
 # Helper function to make API calls
 function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing)
@@ -23,13 +32,15 @@ function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=n
     println("Method: ", method)
     println("URL: ", url)
     println("Headers: ", headers)
+    println("Auth: Basic api:$(api_key[1:4])...")
     println("Body: ", isnothing(body) ? "None" : JSON3.write(body))
 
     # Make the request with basic auth
+    auth = HTTP.BasicAuth("api", api_key)
     response = if isnothing(body)
-        HTTP.request(method, url, headers; basic_auth=("api", api_key), status_exception=false)
+        HTTP.request(method, url, headers; auth=auth, status_exception=false)
     else
-        HTTP.request(method, url, headers, JSON3.write(body); basic_auth=("api", api_key), status_exception=false)
+        HTTP.request(method, url, headers, JSON3.write(body); auth=auth, status_exception=false)
     end
 
     # Print response details
