@@ -1188,3 +1188,94 @@ end
         end
     end
 end
+
+@testset "Mock API Infrastructure" begin
+    # Test mock_results tracking
+    empty!(mock_results.start_calls)
+    empty!(mock_results.end_calls)
+    empty!(mock_results.error_calls)
+
+    # Test successful call tracking
+    result = @w "tracking_test" sum([1,2,3])
+    @test length(mock_results.start_calls) == 1
+    @test length(mock_results.end_calls) == 1
+    @test isempty(mock_results.error_calls)
+
+    # Verify start_call format
+    start_call = mock_results.start_calls[1]
+    verify_op_name(start_call["op_name"], "tracking_test")
+    @test haskey(start_call, "project_id")
+    @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+    @test haskey(start_call, "attributes")
+    @test haskey(start_call["attributes"], "weave")
+    @test haskey(start_call["attributes"]["weave"], "client_version")
+    @test start_call["attributes"]["source"] == "julia-client"
+
+    # Test error state management
+    TestUtils.MockAPI.set_auth_error(true)
+    try
+        @test_throws HTTP.StatusError @w "error_test" sum([1,2,3])
+        @test length(mock_results.error_calls) == 1
+        error_call = mock_results.error_calls[1]
+        @test error_call["status_code"] == 401
+    finally
+        TestUtils.MockAPI.set_auth_error(false)
+    end
+
+    # Verify error state reset
+    empty!(mock_results.error_calls)
+    result = @w "post_error_test" sum([1,2,3])
+    @test length(mock_results.start_calls) == 3  # Including previous calls
+    @test length(mock_results.end_calls) == 3    # Including previous calls
+    @test isempty(mock_results.error_calls)      # Should be empty after reset
+end
+
+@testset "Integration Tests" begin
+    # Test complete call lifecycle
+    empty!(mock_results.start_calls)
+    empty!(mock_results.end_calls)
+    empty!(mock_results.error_calls)
+
+    # Execute a chain of operations
+    result = @w "parent_op" begin
+        x = @w "child_op1" sum([1,2,3])
+        y = @w "child_op2" x * 2
+        @w "child_op3" y + 1
+    end
+
+    # Verify call chain
+    @test length(mock_results.start_calls) == 4  # parent + 3 children
+    @test length(mock_results.end_calls) == 4    # parent + 3 children
+
+    # Verify trace_id propagation
+    parent_call = mock_results.start_calls[1]
+    @test haskey(parent_call, "trace_id")
+    trace_id = parent_call["trace_id"]
+
+    # Verify all calls in chain have same trace_id
+    for call in mock_results.start_calls[2:end]
+        @test call["trace_id"] == trace_id
+    end
+
+    # Verify metadata consistency
+    for call in mock_results.start_calls
+        @test haskey(call, "project_id")
+        @test call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(call, "attributes")
+        @test haskey(call["attributes"], "weave")
+        @test haskey(call["attributes"]["weave"], "client_version")
+        @test call["attributes"]["source"] == "julia-client"
+        @test !isempty(call["attributes"]["os"])
+        @test !isempty(call["attributes"]["arch"])
+        @test occursin("julia", lowercase(call["attributes"]["weave"]["julia_version"]))
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", call["started_at"]) !== nothing
+    end
+
+    # Verify end calls match start calls
+    for (start_call, end_call) in zip(mock_results.start_calls, mock_results.end_calls)
+        @test end_call["id"] == start_call["id"]
+        @test end_call["trace_id"] == start_call["trace_id"]
+        @test haskey(end_call, "ended_at")
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+    end
+end
