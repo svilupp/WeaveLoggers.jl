@@ -25,11 +25,11 @@ function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=n
     println("Headers: ", headers)
     println("Body: ", isnothing(body) ? "None" : JSON3.write(body))
 
-    # Make the request
+    # Make the request with basic auth
     response = if isnothing(body)
-        HTTP.request(method, url, headers, status_exception=false, basic_authorization=("api", api_key))
+        HTTP.request(method, url, headers; basic_auth=("api", api_key), status_exception=false)
     else
-        HTTP.request(method, url, headers, JSON3.write(body), status_exception=false, basic_authorization=("api", api_key))
+        HTTP.request(method, url, headers, JSON3.write(body); basic_auth=("api", api_key), status_exception=false)
     end
 
     # Print response details
@@ -57,7 +57,7 @@ start_payload = Dict(
         "display_name" => "Test API Call",
         "trace_id" => nothing,
         "parent_id" => nothing,
-        "started_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:mm:ss.sssZ"),
+        "started_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
         "attributes" => Dict(),
         "inputs" => Dict(
             "prompt" => "Hello, World!",
@@ -78,7 +78,7 @@ if start_response.status == 200
     # Create the end call payload
     end_payload = Dict(
         "end" => Dict(
-            "ended_at" => Dates.format(now(UTC), "yyyy-MM-ddTHH:mm:ss.sssZ"),
+            "ended_at" => Dates.format(now(UTC), "yyyy-MM-dd\\THH:mm:ss.sssZ"),
             "outputs" => Dict(
                 "response" => "Test response",
                 "tokens" => 10,
