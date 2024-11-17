@@ -6,7 +6,7 @@ and API integration capabilities.
 """
 module Macros
 
-using ..WeaveLoggers: format_iso8601
+using ..WeaveLoggers: format_iso8601, PROJECT_ID, get_system_metadata
 using ..WeaveLoggers.Calls: start_call, end_call
 using ..WeaveLoggers.Tables: create_table
 using ..WeaveLoggers.Files: create_file
@@ -101,44 +101,38 @@ macro w(args...)
         start_call(
             call_id,
             trace_id=trace_id,
-            op_name=$(esc(op_name)),
+            op_name=let
+                hash_value = bytes2hex(sha256(string($(esc(op_name))))[1:4])
+                "weave:///$PROJECT_ID/op/$(esc(op_name)):$hash_value"
+            end,
             started_at=format_iso8601(start_time),
             inputs=Dict(
                 "args" => input_args,
                 "types" => input_types,
                 "code" => $expr_str
             ),
-            attributes=Dict{String,Any}(
-                "tags" => $tags,
-                "expression" => $expr_str
+            attributes=merge(
+                get_system_metadata(),
+                Dict{String,Any}(
+                    "tags" => $tags,
+                    "expression" => $expr_str
+                )
             )
         )
 
-        # Execute the function with detailed error handling
+        # Execute the function with minimal error handling
         local result = try
             $(esc(expr))
         catch e
-            # Capture detailed error information
-            local bt = catch_backtrace()
-            local error_msg = sprint() do io
-                showerror(io, e)
-                println(io)
-                Base.show_backtrace(io, bt)
-            end
-
-            # End the call with error information
+            # End the call and rethrow immediately without wrapping
             end_call(
                 call_id,
-                error=error_msg,
-                ended_at=format_iso8601(now(UTC)),
-                outputs=nothing,  # No outputs on error
-                attributes=Dict{String,Any}(
-                    "expression" => $expr_str,
-                    "error_type" => string(typeof(e)),
-                    "duration_ns" => time_ns() - start_time_ns
-                )
+                trace_id=trace_id,
+                started_at=format_iso8601(start_time),
+                error=e,  # Pass the error object directly without wrapping
+                outputs=nothing  # No outputs on error
             )
-            rethrow(e)
+            rethrow(e)  # Rethrow immediately without additional wrapping
         end
 
         # Calculate duration with nanosecond precision
@@ -185,7 +179,7 @@ df = DataFrame(a = 1:3, b = ["x", "y", "z"])
 macro wtable(args...)
     # Extract table name and data object
     if length(args) < 1
-        throw(ArgumentError("@wtable requires at least a data object"))
+        return :(create_table(nothing, nothing, Symbol[]))  # Let API handle invalid cases
     end
 
     # Handle different calling patterns
@@ -196,11 +190,8 @@ macro wtable(args...)
     # Check if first argument is a string (explicit name)
     if isa(args[1], String) || (isa(args[1], Expr) && args[1].head == :string)
         # Explicit string name provided: @wtable "name" data
-        if length(args) < 2
-            throw(ArgumentError("@wtable requires a data object when table name is provided"))
-        end
         table_name_expr = args[1]
-        data_expr = args[2]
+        data_expr = length(args) >= 2 ? args[2] : nothing  # Let API handle missing data
         start_idx = 3
     else
         # Use first argument as both name and data: @wtable data
@@ -213,14 +204,10 @@ macro wtable(args...)
 
     return quote
         local data = $(esc(data_expr))
-        # Verify data is Tables.jl-compatible
-        if !Tables.istable(data)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
-        end
         local table_name = $(esc(table_name_expr))
         local tags = Symbol[]
         append!(tags, $tag_values)
-        create_table(table_name, data, tags)
+        create_table(table_name, data, tags)  # Let API handle all validation
     end
 end
 
@@ -241,9 +228,9 @@ Log a file to Weights & Biases Weave service.
 ```
 """
 macro wfile(args...)
-    # Extract file name/path and validate
+    # Extract file name/path and let API handle validation
     if length(args) < 1
-        throw(ArgumentError("@wfile requires at least a file path argument"))
+        return :(create_file(nothing, nothing, Symbol[]))  # Let API handle invalid cases
     end
 
     # Debug output (after length check)
@@ -273,19 +260,9 @@ macro wfile(args...)
     tag_values = [arg.value for arg in args[start_idx:end] if arg isa QuoteNode]
 
     return quote
-        # First evaluate the file path with error handling
-        local raw_path = try
-            $(esc(file_path_expr))
-        catch e
-            throw(ArgumentError("Invalid file path expression: $(e)"))
-        end
-
-        # Handle file name separately with error handling
-        local raw_name = try
-            $(file_name_expr === nothing ? :(nothing) : esc(file_name_expr))
-        catch e
-            nothing  # Default to nothing on error
-        end
+        # Evaluate file path and name directly, letting API handle any errors
+        local raw_path = $(esc(file_path_expr))
+        local raw_name = $(file_name_expr === nothing ? :(nothing) : esc(file_name_expr))
 
         # Use basename if no name provided or if explicitly nothing
         local name = if raw_name === nothing

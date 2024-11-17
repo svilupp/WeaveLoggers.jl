@@ -2,6 +2,7 @@ module TestUtils
 
 using WeaveLoggers
 using Dates, UUIDs, Tables, DataFrames
+using HTTP, JSON3
 
 # Test data structures
 struct TestType
@@ -30,6 +31,8 @@ mutable struct MockAPIResults
     end_calls::Vector{Dict{String,Any}}
     table_calls::Vector{Dict{String,Any}}
     file_calls::Vector{Dict{String,Any}}
+    object_calls::Vector{Dict{String,Any}}
+    error_calls::Vector{Dict{String,Any}}  # Add error_calls tracking
 end
 
 # Initialize mock results with explicit type parameters
@@ -37,7 +40,9 @@ const mock_results = MockAPIResults(
     Vector{Dict{String,Any}}(),
     Vector{Dict{String,Any}}(),
     Vector{Dict{String,Any}}(),
-    Vector{Dict{String,Any}}()
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}(),
+    Vector{Dict{String,Any}}()  # Initialize error_calls
 )
 
 # Mock API Module
@@ -46,83 +51,173 @@ module MockAPI
     using UUIDs
     using Dates
     using WeaveLoggers: format_iso8601
-    using DataFrames, Tables
+    using DataFrames, Tables, HTTP, JSON3
+
+    # Error simulation state
+    const error_states = Dict{Symbol,Bool}(
+        :auth_error => false,
+        :network_error => false,
+        :rate_limit_error => false,
+        :invalid_payload_error => false,
+        :metadata_error => false
+    )
+
+    # Error simulation control functions
+    function set_auth_error(state::Bool)
+        error_states[:auth_error] = state
+    end
+
+    function set_network_error(state::Bool)
+        error_states[:network_error] = state
+    end
+
+    function set_rate_limit_error(state::Bool)
+        error_states[:rate_limit_error] = state
+    end
+
+    function set_invalid_payload_error(state::Bool)
+        error_states[:invalid_payload_error] = state
+    end
+
+    function set_metadata_error(state::Bool)
+        error_states[:metadata_error] = state
+    end
+
+    # Error handling helper function
+    function check_for_errors(endpoint::String)
+        error_response = nothing
+        status_code = 200
+        headers = ["Content-Type" => "application/json"]
+
+        if error_states[:auth_error]
+            error_response = Dict{String,Any}("detail" => "Authentication failed", "status_code" => 401)
+            status_code = 401
+        elseif error_states[:network_error]
+            error_response = Dict{String,Any}("detail" => "Service temporarily unavailable", "status_code" => 503)
+            status_code = 503
+        elseif error_states[:rate_limit_error]
+            error_response = Dict{String,Any}("detail" => "Too many requests", "status_code" => 429)
+            status_code = 429
+        elseif error_states[:invalid_payload_error]
+            error_response = Dict{String,Any}("detail" => "Invalid request payload", "status_code" => 400)
+            status_code = 400
+        elseif error_states[:metadata_error]
+            error_response = Dict{String,Any}("detail" => "Missing required metadata", "status_code" => 400)
+            status_code = 400
+        end
+
+        if !isnothing(error_response)
+            # Create mock HTTP response
+            body = JSON3.write(error_response)
+            response = HTTP.Response(status_code, headers, body=body)
+
+            # Record the error for testing
+            push!(mock_results.error_calls, error_response)
+
+            # Throw HTTP.StatusError to match real API behavior
+            throw(HTTP.StatusError(status_code, "POST", endpoint, response))
+        end
+    end
 
     # Mock weave_api function to bypass actual API calls
     function weave_api(method::String, endpoint::String, body::Union{Dict,Nothing}=nothing;
                       base_url::String="", query_params::Dict{String,String}=Dict{String,String}())
+        # Check for simulated errors before processing any endpoint
+        check_for_errors(endpoint)
+
         # Mock API key for testing - bypass the API key check entirely
         ENV["WANDB_API_KEY"] = "mock-api-key-for-testing"
 
         # For start_call endpoint
-        if endpoint == "/call/start"
+        if endpoint == "/call/start" && !isnothing(body)
             return start_call(
-                model=get(body, "model", ""),
-                inputs=get(body, "inputs", nothing),
-                metadata=get(body, "metadata", nothing)
+                id=get(body, "id", string(uuid4())),
+                trace_id=get(body, "trace_id", string(uuid4())),
+                op_name=get(body, "op_name", ""),
+                started_at=get(body, "started_at", format_iso8601(now(UTC))),
+                inputs=get(body, "inputs", Dict()),
+                attributes=get(body, "attributes", Dict())
             )
         # For end_call endpoint
-        elseif endpoint == "/call/end"
+        elseif endpoint == "/call/end" && !isnothing(body)
             return end_call(
                 body["id"];
-                outputs=get(body, "outputs", Dict{String,Any}()),
-                error=get(body, "error", nothing)
+                outputs=get(body, "outputs", Dict()),
+                error=get(body, "error", nothing),
+                trace_id=get(body, "trace_id", string(uuid4())),
+                started_at=get(body, "started_at", format_iso8601(now(UTC)))
+            )
+        # For update_call endpoint
+        elseif endpoint == "/call/update" && !isnothing(body)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(body, "id", ""),
+                "project_id" => get(body, "project_id", "")
+            )
+        # For delete_call endpoint
+        elseif endpoint == "/call/delete" && !isnothing(body)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(body, "id", ""),
+                "project_id" => get(body, "project_id", "")
+            )
+        # For read_call endpoint
+        elseif endpoint == "/call/read" && !isnothing(query_params)
+            return Dict{String,Any}(
+                "status" => "success",
+                "id" => get(query_params, "id", ""),
+                "project_id" => get(query_params, "project_id", "")
             )
         end
         return Dict{String,Any}("status" => "mocked", "endpoint" => endpoint)
     end
 
-    # Start call with both positional and keyword arguments
-    function start_call(id::String; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
-                       started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
-                       attributes::Union{Dict,Nothing}=nothing, model::String="",
-                       metadata::Union{Dict,Nothing}=nothing)
-        # Call the non-parameterized version and modify its result
-        result = start_call(; trace_id=isnothing(trace_id) ? id : trace_id,
-                            op_name=op_name, started_at=started_at,
-                            inputs=inputs, attributes=attributes,
-                            model=model, metadata=metadata)
-        result["id"] = id  # Override the generated ID with the provided one
-        # Note: We don't push to mock_results here as it's already done in the non-parameterized version
-        return id  # Return only the ID string
-    end
-
-    function start_call(; trace_id::Union{String,Nothing}=nothing, op_name::Union{String,Nothing}=nothing,
-                       started_at::Union{String,Nothing}=nothing, inputs::Union{Dict,Nothing}=nothing,
-                       attributes::Union{Dict,Nothing}=nothing, model::String="",
-                       metadata::Union{Dict,Nothing}=nothing)
+    # Mock start_call function to match the new API format
+    function start_call(; op_name::String, inputs::Dict=Dict(), attributes::Dict=Dict(), display_name::String="")
+        # Generate unique identifiers
         id = string(uuid4())
-        trace_id = isnothing(trace_id) ? string(uuid4()) : trace_id
-        started_at = isnothing(started_at) ? format_iso8601(now(UTC)) : started_at
+        trace_id = string(uuid4())
+        started_at = format_iso8601(now(UTC))
 
+        # Format op_name to include entity/project with weave:/// prefix
+        formatted_op_name = "weave:///anim-mina/slide-comprehension-plain-ocr/$op_name"
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+        merged_attributes = merge(system_metadata, attributes)
+
+        # Create call data with flattened structure
         call_data = Dict{String,Any}(
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
             "id" => id,
+            "op_name" => formatted_op_name,
+            "display_name" => isempty(display_name) ? op_name : display_name,
             "trace_id" => trace_id,
-            "started_at" => started_at
+            "parent_id" => nothing,
+            "started_at" => started_at,
+            "inputs" => inputs,
+            "attributes" => merged_attributes,
+            "wb_user_id" => nothing,
+            "wb_run_id" => nothing
         )
 
-        # Support both old and new parameter sets
-        if !isnothing(op_name)
-            call_data["op_name"] = op_name
-        end
-        if !isempty(model)
-            call_data["model"] = model
-        end
-        if !isnothing(inputs)
-            call_data["inputs"] = inputs
-        end
-        if !isnothing(attributes)
-            call_data["attributes"] = attributes
-        end
-        if !isnothing(metadata)
-            call_data["metadata"] = metadata
-        end
-
         push!(mock_results.start_calls, call_data)
-        return call_data
+        return id, trace_id, started_at
     end
 
-    function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="", outputs::Union{Nothing,Dict{String,Any}}=nothing, attributes::Dict{String,Any}=Dict{String,Any}())
+    function end_call(id::String; error::Union{Nothing,String,Dict{String,Any}}=nothing, ended_at::String="",
+                     outputs::Union{Nothing,Dict{String,Any}}=nothing,
+                     attributes::Dict{String,Any}=Dict{String,Any}(),
+                     trace_id::String=string(uuid4()),
+                     started_at::String=format_iso8601(now(UTC)))
         # Add a small sleep to ensure measurable time difference
         sleep(0.001)  # 1ms sleep
 
@@ -130,19 +225,27 @@ module MockAPI
 
         call_data = Dict{String,Any}(
             "id" => id,
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "trace_id" => trace_id,
+            "started_at" => started_at,
             "ended_at" => ended_at,
-            "attributes" => attributes
+            "attributes" => attributes,
+            "summary" => Dict(
+                "input_type" => "function_input",
+                "output_type" => "function_output",
+                "result" => outputs,
+                "status" => isnothing(error) ? "success" : "error",
+                "duration" => nothing
+            )
         )
 
         if !isnothing(error)
             if error isa Dict
-                call_data["error"] = error
+                call_data["detail"] = error["detail"]
+                call_data["status_code"] = error["status_code"]
             elseif error isa String
-                call_data["error"] = error
-                if contains(error, "DivideError")
-                    # Ensure the error type is properly captured for test verification
-                    call_data["error_type"] = "DivideError"
-                end
+                call_data["detail"] = error
+                call_data["status_code"] = 500  # Internal error for runtime errors
             end
         end
 
@@ -158,14 +261,34 @@ module MockAPI
     function create_table(name::String, data::Any, tags::Vector{Symbol}=Symbol[])
         # Handle non-Tables.jl-compatible data first
         if !(Tables.istable(data) || data isa DataFrame)
-            throw(ArgumentError("Data must be Tables.jl-compatible"))
+            error_response = Dict{String,Any}("detail" => "Data must be Tables.jl-compatible", "status_code" => 400)
+            headers = ["Content-Type" => "application/json"]
+            response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+            push!(mock_results.error_calls, error_response)
+            throw(HTTP.StatusError(400, "POST", "/table/create", response))
         end
 
-        # Create table data dictionary
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
+        # Create table data dictionary with proper formatting
         table_data = Dict{String,Any}(
             "name" => name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_table",
             "data" => data,
-            "tags" => tags
+            "tags" => tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
         )
         push!(mock_results.table_calls, table_data)
         return table_data
@@ -178,7 +301,11 @@ module MockAPI
 
     # Method for handling non-Tables.jl-compatible data with explicit error
     function create_table(name::String, data::Symbol, tags::Vector{Symbol}=Symbol[])
-        throw(ArgumentError("Data must be Tables.jl-compatible"))
+        error_response = Dict{String,Any}("detail" => "Data must be Tables.jl-compatible", "status_code" => 400)
+        headers = ["Content-Type" => "application/json"]
+        response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+        push!(mock_results.error_calls, error_response)
+        throw(HTTP.StatusError(400, "POST", "/table/create", response))
     end
 
     # Mock create_file function with unified handling for all tag types
@@ -191,15 +318,36 @@ module MockAPI
 
         # Check if file exists
         if !isfile(path)
-            throw(ArgumentError("File does not exist: $path"))
+            error_response = Dict{String,Any}("detail" => "File does not exist: $path", "status_code" => 400)
+            headers = ["Content-Type" => "application/json"]
+            response = HTTP.Response(400, headers, body=JSON3.write(error_response))
+            push!(mock_results.error_calls, error_response)
+            throw(HTTP.StatusError(400, "POST", "/file/create", response))
         end
 
         # Convert empty vector to Symbol[] to avoid type issues
         actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
         file_data = Dict{String,Any}(
             "name" => isnothing(name) ? basename(path) : name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_file",
             "path" => path,
-            "tags" => actual_tags
+            "tags" => actual_tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
         )
         push!(mock_results.file_calls, file_data)
         return file_data
@@ -210,6 +358,42 @@ module MockAPI
         create_file(name, path, collect(tags))
     end
 
+    # Mock create_object function with unified handling for all tag types
+    function create_object(name::String, obj::Any, tags::Vector{Symbol}=Symbol[])
+        # Convert empty vector to Symbol[] to avoid type issues
+        actual_tags = isempty(tags) ? Symbol[] : convert(Vector{Symbol}, tags)
+
+        # Add system metadata
+        system_metadata = Dict(
+            "weave" => Dict(
+                "client_version" => "0.1.0",  # Mock version for testing
+                "source" => "julia-client",
+                "os" => string(Sys.KERNEL),
+                "arch" => string(Sys.ARCH),
+                "julia_version" => string(VERSION)
+            )
+        )
+
+        # Create object data dictionary with proper formatting
+        object_data = Dict{String,Any}(
+            "name" => name,
+            "id" => string(uuid4()),
+            "project_id" => "anim-mina/slide-comprehension-plain-ocr",
+            "op_name" => "weave:///anim-mina/slide-comprehension-plain-ocr/create_object",
+            "data" => string(obj),  # Convert object to string representation
+            "tags" => actual_tags,
+            "attributes" => system_metadata,
+            "created_at" => format_iso8601(now(UTC))
+        )
+        push!(mock_results.object_calls, object_data)
+        return object_data
+    end
+
+    # Convenience method for variadic tags
+    function create_object(name::String, obj::Any, tags::Symbol...)
+        create_object(name, obj, collect(tags))
+    end
+
 end # module MockAPI
 
 # Override WeaveLoggers API functions with mock versions
@@ -218,9 +402,10 @@ const start_call = MockAPI.start_call
 const end_call = MockAPI.end_call
 const create_table = MockAPI.create_table
 const create_file = MockAPI.create_file
+const create_object = MockAPI.create_object
 
 # Export everything
 export TestType, setup_test_data, MockAPIResults, mock_results, MockAPI
-export weave_api, start_call, end_call, create_table, create_file
+export weave_api, start_call, end_call, create_table, create_file, create_object
 
 end

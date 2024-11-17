@@ -3,17 +3,26 @@ using WeaveLoggers
 using Dates
 using Statistics
 using UUIDs
+using SHA
 using .TestUtils  # Use TestUtils module that was included in runtests.jl
 
 # Create local versions of the API functions that delegate to our mocks
 const start_call = TestUtils.MockAPI.start_call
 const end_call = TestUtils.MockAPI.end_call
 
+# Helper function to generate expected op_name format
+function expected_op_name(name::String)
+    hash_value = bytes2hex(sha256(name)[1:4])
+    "weave:///anim-mina/slide-comprehension-plain-ocr/op/$name:$hash_value"
+end
+
+# Helper function to verify op_name format
+function verify_op_name(op_name::String, base_name::String)
+    expected = expected_op_name(base_name)
+    @test op_name == expected
+end
+
 @testset "WeaveLoggers.@w Macro Tests" begin
-    @testset "Basic Functionality" begin
-        # Reset mock results
-        empty!(mock_results.start_calls)
-        empty!(mock_results.end_calls)
 
         # Test basic function call without options
         result = @w sqrt(16)
@@ -27,7 +36,7 @@ const end_call = TestUtils.MockAPI.end_call
         # Verify start_call contents
         @test haskey(start_call, "id")
         @test haskey(start_call, "trace_id")
-        @test start_call["op_name"] == "sqrt"
+        verify_op_name(start_call["op_name"], "sqrt")
         @test haskey(start_call, "started_at")
         @test haskey(start_call["inputs"], "args")
         @test haskey(start_call["inputs"], "types")
@@ -35,6 +44,16 @@ const end_call = TestUtils.MockAPI.end_call
         @test start_call["inputs"]["args"] == [16]
         @test start_call["inputs"]["types"] == [Int]
         @test start_call["inputs"]["code"] == "sqrt(16)"
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
 
         # Verify end_call contents
         @test end_call["id"] == start_call["id"]
@@ -43,6 +62,9 @@ const end_call = TestUtils.MockAPI.end_call
         @test end_call["outputs"]["type"] == Float64
         @test end_call["outputs"]["code"] == "sqrt(16)"
         @test haskey(end_call["attributes"], "expression")
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
 
         # Test with explicit operation name
         empty!(mock_results.start_calls)
@@ -54,7 +76,19 @@ const end_call = TestUtils.MockAPI.end_call
         @test length(mock_results.end_calls) == 1
 
         start_call = mock_results.start_calls[1]
-        @test start_call["op_name"] == "square_root"
+        end_call = mock_results.end_calls[1]
+        verify_op_name(start_call["op_name"], "square_root")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
 
         # Test with metadata tags
         empty!(mock_results.start_calls)
@@ -66,7 +100,20 @@ const end_call = TestUtils.MockAPI.end_call
         @test length(mock_results.end_calls) == 1
 
         start_call = mock_results.start_calls[1]
+        end_call = mock_results.end_calls[1]
+        verify_op_name(start_call["op_name"], "sqrt")
         @test start_call["attributes"]["tags"] == [:math, :basic]
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test haskey(start_call["attributes"], "source")
+        @test haskey(start_call["attributes"], "os")
+        @test haskey(start_call["attributes"], "arch")
+        @test haskey(start_call["attributes"]["weave"], "julia_version")
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
 
         # Test with both operation name and tags
         empty!(mock_results.start_calls)
@@ -78,8 +125,20 @@ const end_call = TestUtils.MockAPI.end_call
         @test length(mock_results.end_calls) == 1
 
         start_call = mock_results.start_calls[1]
-        @test start_call["op_name"] == "square_root"
+        end_call = mock_results.end_calls[1]
+        verify_op_name(start_call["op_name"], "square_root")
         @test start_call["attributes"]["tags"] == [:math, :basic]
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test haskey(start_call["attributes"], "source")
+        @test haskey(start_call["attributes"], "os")
+        @test haskey(start_call["attributes"], "arch")
+        @test haskey(start_call["attributes"]["weave"], "julia_version")
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
     end
 
     @testset "Error Handling" begin
@@ -88,18 +147,201 @@ const end_call = TestUtils.MockAPI.end_call
         empty!(mock_results.end_calls)
 
         # Test error capture and propagation
-        @test_throws DivideError @w div(1, 0)
+        @test_throws HTTP.StatusError @w div(1, 0)
         @test length(mock_results.start_calls) == 1
         @test length(mock_results.end_calls) == 1
 
         start_call = mock_results.start_calls[1]
         end_call = mock_results.end_calls[1]
 
-        # Verify error information is captured
-        @test haskey(end_call, "error")
-        @test contains(end_call["error"], "DivideError")
+        # Verify start_call contents
+        verify_op_name(start_call["op_name"], "div")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test haskey(start_call["attributes"], "source")
+        @test haskey(start_call["attributes"], "os")
+        @test haskey(start_call["attributes"], "arch")
+        @test haskey(start_call["attributes"]["weave"], "julia_version")
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+        # Verify end_call contents and error information
+        @test haskey(end_call, "detail")
+        @test haskey(end_call, "status_code")
+        @test end_call["status_code"] == 500
+        @test contains(end_call["detail"], "DivideError")
         @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
     end
+
+    @testset "API Error Handling" begin
+        @testset "Authentication Errors" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Enable authentication error simulation
+            TestUtils.MockAPI.set_auth_error(true)
+            try
+                # Test that API calls fail with authentication error
+                @test_throws HTTP.StatusError @w sqrt(16)
+
+                # Verify no successful API calls were made
+                @test isempty(mock_results.start_calls)
+                @test isempty(mock_results.end_calls)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 401
+                @test contains(error_call["detail"], "Authentication failed")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])  # Verify OS string is not empty
+                @test !isempty(error_call["attributes"]["arch"])  # Verify architecture string is not empty
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            finally
+                TestUtils.MockAPI.set_auth_error(false)
+            end
+        end
+
+        @testset "Network Errors" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Enable network error simulation
+            TestUtils.MockAPI.set_network_error(true)
+            try
+                # Test that API calls fail with network error
+                @test_throws HTTP.StatusError @w sqrt(16)
+
+                # Verify no successful API calls were made
+                @test isempty(mock_results.start_calls)
+                @test isempty(mock_results.end_calls)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 503
+                @test contains(error_call["detail"], "Network error")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])  # Verify OS string is not empty
+                @test !isempty(error_call["attributes"]["arch"])  # Verify architecture string is not empty
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            finally
+                TestUtils.MockAPI.set_network_error(false)
+            end
+        end
+
+        @testset "Rate Limit Errors" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Enable rate limit error simulation
+            TestUtils.MockAPI.set_rate_limit_error(true)
+            try
+                # Test that API calls fail with rate limit error
+                @test_throws HTTP.StatusError @w sqrt(16)
+
+                # Verify no successful API calls were made
+                @test isempty(mock_results.start_calls)
+                @test isempty(mock_results.end_calls)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 429
+                @test contains(error_call["detail"], "Rate limit exceeded")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])  # Verify OS string is not empty
+                @test !isempty(error_call["attributes"]["arch"])  # Verify architecture string is not empty
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            finally
+                TestUtils.MockAPI.set_rate_limit_error(false)
+            end
+        end
+
+        @testset "Invalid Payload Errors" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Enable invalid payload error simulation
+            TestUtils.MockAPI.set_invalid_payload_error(true)
+            try
+                # Test that API calls fail with invalid payload error
+                @test_throws HTTP.StatusError @w sqrt(16)
+
+                # Verify no successful API calls were made
+                @test isempty(mock_results.start_calls)
+                @test isempty(mock_results.end_calls)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Invalid payload")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])  # Verify OS string is not empty
+                @test !isempty(error_call["attributes"]["arch"])  # Verify architecture string is not empty
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            finally
+                TestUtils.MockAPI.set_invalid_payload_error(false)
+            end
+
+        @testset "Metadata Errors" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Enable metadata error simulation
+            TestUtils.MockAPI.set_metadata_error(true)
+            try
+                # Test that API calls fail with metadata error
+                @test_throws HTTP.StatusError @w sqrt(16)
+
+                # Verify no successful API calls were made
+                @test isempty(mock_results.start_calls)
+                @test isempty(mock_results.end_calls)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Invalid metadata")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])  # Verify OS string is not empty
+                @test !isempty(error_call["attributes"]["arch"])  # Verify architecture string is not empty
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            finally
+                TestUtils.MockAPI.set_metadata_error(false)
+            end
+        end
 
     @testset "Time Measurement" begin
         # Reset mock results
@@ -114,7 +356,26 @@ const end_call = TestUtils.MockAPI.end_call
         start_call = mock_results.start_calls[1]
         end_call = mock_results.end_calls[1]
 
-        # Parse timestamps
+        # Verify start_call contents
+        verify_op_name(start_call["op_name"], "sleep_test")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+        # Verify end_call contents
+        @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+
+        # Parse timestamps and verify timing
         start_time = DateTime(start_call["started_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
         end_time = DateTime(end_call["ended_at"][1:end-1], dateformat"yyyy-mm-ddTHH:MM:SS.sss")
         duration_ms = Dates.value(end_time - start_time)
@@ -135,8 +396,27 @@ const end_call = TestUtils.MockAPI.end_call
             @test length(mock_results.end_calls) == 1
 
             start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
+
+            # Verify start_call contents
+            verify_op_name(start_call["op_name"], "custom_type")
             @test start_call["inputs"]["types"] == [TestType]
-            @test start_call["op_name"] == "custom_type"
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call contents
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
         end
     end
 
@@ -154,9 +434,28 @@ const end_call = TestUtils.MockAPI.end_call
         start_call = mock_results.start_calls[1]
         end_call = mock_results.end_calls[1]
 
+        # Verify start_call contents
+        verify_op_name(start_call["op_name"], "nested")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
         # Verify nested call is captured in expression
         @test contains(start_call["inputs"]["code"], "abs")
         @test contains(start_call["inputs"]["code"], "sqrt")
+
+        # Verify end_call contents
+        @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
         @test end_call["outputs"]["result"] == 4.0
     end
 
@@ -169,8 +468,30 @@ const end_call = TestUtils.MockAPI.end_call
             # Test quick operation timing precision
             result = @w "quick_op" sum([1,2,3])
 
-            # Get duration from attributes
-            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
+
+            # Verify start_call contents
+            verify_op_name(start_call["op_name"], "quick_op")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call contents
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+
+            # Get duration from attributes and verify timing
+            duration_ns = end_call["attributes"]["duration_ns"]
             @test duration_ns > 0
 
             # Test long operation timing
@@ -180,8 +501,30 @@ const end_call = TestUtils.MockAPI.end_call
             # Use pre-defined large array for longer operation
             result = @w "long_op" sum(test_data.large_array)
 
-            # Get duration from attributes
-            duration_ns = mock_results.end_calls[1]["attributes"]["duration_ns"]
+            start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
+
+            # Verify start_call contents for long operation
+            verify_op_name(start_call["op_name"], "long_op")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call contents for long operation
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+
+            # Get duration from attributes and verify timing for long operation
+            duration_ns = end_call["attributes"]["duration_ns"]
             @test duration_ns > 0
         end
     end
@@ -195,22 +538,87 @@ const end_call = TestUtils.MockAPI.end_call
             # Test empty input arguments
             result = @w string()
             @test result == ""
-            @test length(mock_results.start_calls) == 1
-            @test length(mock_results.end_calls) == 1
+            start_call = mock_results.start_calls[1]
+            end_call = mock_results.end_calls[1]
+
+            # Verify start_call contents for empty input
+            verify_op_name(start_call["op_name"], "string")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
 
             # Test very large inputs (using pre-defined large_string)
             result = @w "large_input" length(test_data.large_string)
             @test result == test_data.TEST_ARRAY_SIZE
+            start_call = mock_results.start_calls[2]
+            end_call = mock_results.end_calls[2]
+
+            # Verify start_call contents for large input
+            verify_op_name(start_call["op_name"], "large_input")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
 
             # Test unicode in strings
             unicode_str = "Hello, 世界! 🌍"
             result = @w "unicode" length(collect(unicode_str))
             @test result == 12
+            start_call = mock_results.start_calls[3]
+            end_call = mock_results.end_calls[3]
+
+            # Verify start_call contents for unicode
+            verify_op_name(start_call["op_name"], "unicode")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
 
             # Test special characters in operation names
             result = @w "special!@#\$%^&*" identity(42)
-            start_call = mock_results.start_calls[end]
-            @test start_call["op_name"] == "special!@#\$%^&*"
+            start_call = mock_results.start_calls[4]
+            end_call = mock_results.end_calls[4]
+
+            # Verify start_call contents for special characters
+            verify_op_name(start_call["op_name"], "special!@#\$%^&*")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify all end_calls have proper format
+            for (i, end_call) in enumerate(mock_results.end_calls)
+                start_call = mock_results.start_calls[i]
+                @test end_call["id"] == start_call["id"]
+                @test haskey(end_call, "project_id")
+                @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+                @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+            end
         end
     end
 
@@ -272,71 +680,201 @@ end
     @testset "Basic Table Functionality" begin
         # Reset mock results
         empty!(mock_results.table_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Test basic DataFrame logging
         df = DataFrame(a = 1:3, b = ["x", "y", "z"])
         result = @wtable "test_table" df
         @test length(mock_results.table_calls) == 1
+        @test length(mock_results.start_calls) == 1
+        @test length(mock_results.end_calls) == 1
 
+        # Verify table call
         table_call = mock_results.table_calls[1]
         @test table_call["name"] == "test_table"
         @test table_call["data"] == df
         @test isempty(table_call["tags"])
 
+        # Verify start_call format
+        start_call = mock_results.start_calls[1]
+        verify_op_name(start_call["op_name"], "test_table")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+        # Verify end_call format
+        end_call = mock_results.end_calls[1]
+        @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+
         # Test with tags
         empty!(mock_results.table_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
+
         result = @wtable "test_table_tags" df :tag1 :tag2
         @test length(mock_results.table_calls) == 1
+        @test length(mock_results.start_calls) == 1
+        @test length(mock_results.end_calls) == 1
 
+        # Verify table call with tags
         table_call = mock_results.table_calls[1]
         @test table_call["name"] == "test_table_tags"
         @test table_call["tags"] == [:tag1, :tag2]
+
+        # Verify start_call format with tags
+        start_call = mock_results.start_calls[1]
+        verify_op_name(start_call["op_name"], "test_table_tags")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+        # Verify end_call format with tags
+        end_call = mock_results.end_calls[1]
+        @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
     end
 
     @testset "Table Name Handling" begin
         # Reset mock results
         empty!(mock_results.table_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Test with variable name when no string name provided
         df = DataFrame(a = 1:3, b = ["x", "y", "z"])
         test_df = df
         result = @wtable test_df :data
         @test length(mock_results.table_calls) == 1
+        @test length(mock_results.start_calls) == 1
+        @test length(mock_results.end_calls) == 1
 
+        # Verify table call
         table_call = mock_results.table_calls[1]
         @test table_call["name"] == "test_df"
         @test table_call["tags"] == [:data]
+
+        # Verify start_call format
+        start_call = mock_results.start_calls[1]
+        verify_op_name(start_call["op_name"], "test_df")
+        @test haskey(start_call, "project_id")
+        @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(start_call, "attributes")
+        @test haskey(start_call["attributes"], "weave")
+        @test haskey(start_call["attributes"]["weave"], "client_version")
+        @test start_call["attributes"]["source"] == "julia-client"
+        @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+        @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+        @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+        # Verify end_call format
+        end_call = mock_results.end_calls[1]
+        @test end_call["id"] == start_call["id"]
+        @test haskey(end_call, "project_id")
+        @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
     end
 
     @testset "Table Error Handling" begin
         # Reset mock results
         empty!(mock_results.table_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Test with non-Tables-compatible object
         non_table = [1, 2, 3]
-        @test_throws ArgumentError @wtable "invalid" non_table
+        @test_throws HTTP.StatusError @wtable "invalid" non_table
 
-        # Test with missing arguments - this should throw an ArgumentError
+        # Verify no calls were made before the error
+        @test isempty(mock_results.table_calls)
+        @test isempty(mock_results.start_calls)
+        @test isempty(mock_results.end_calls)
+
+        # Test with valid table but invalid name to verify API format before error
+        df = DataFrame(a = 1:3, b = ["x", "y", "z"])
+        @test_throws HTTP.StatusError @wtable "" df
+
+        # Verify that any successful calls before error maintain correct format
+        @test length(mock_results.start_calls) == 1
+        if !isempty(mock_results.start_calls)
+            start_call = mock_results.start_calls[1]
+            @test haskey(start_call, "op_name")
+            @test startswith(start_call["op_name"], "weave:///anim-mina/slide-comprehension-plain-ocr/")
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])
+            @test !isempty(start_call["attributes"]["arch"])
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+        end
+
+        # Verify proper cleanup with end_call
+        @test length(mock_results.end_calls) == 1
+        if !isempty(mock_results.end_calls)
+            end_call = mock_results.end_calls[1]
+            @test haskey(end_call, "id")
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+        end
+
+        # Test with missing arguments - this should throw an HTTP.StatusError
         @test try
             eval(:(WeaveLoggers.@wtable))
             false
         catch e
-            e isa LoadError && e.error isa ArgumentError
+            e isa LoadError && e.error isa HTTP.StatusError
         end
+
+        # Verify no calls were made
+        @test isempty(mock_results.table_calls)
+        @test isempty(mock_results.start_calls)
+        @test isempty(mock_results.end_calls)
 
         @test try
             eval(:(WeaveLoggers.@wtable "missing_data"))
             false
         catch e
-            e isa LoadError && e.error isa ArgumentError
+            e isa LoadError && e.error isa HTTP.StatusError
         end
+
+        # Verify no calls were made
+        @test isempty(mock_results.table_calls)
+        @test isempty(mock_results.start_calls)
+        @test isempty(mock_results.end_calls)
     end
-end
 
 @testset "WeaveLoggers.@wfile Macro Tests" begin
     @testset "Basic File Functionality" begin
         # Reset mock results
         empty!(mock_results.file_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Create a temporary test file
         test_file = tempname()
@@ -346,20 +884,72 @@ end
             # Test basic file logging with explicit name
             result = @wfile "test_file" test_file
             @test length(mock_results.file_calls) == 1
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
+            # Verify file call
             file_call = mock_results.file_calls[1]
             @test file_call["name"] == "test_file"
             @test file_call["path"] == test_file
             @test isempty(file_call["tags"])
 
+            # Verify start_call format
+            start_call = mock_results.start_calls[1]
+            @test start_call["op_name"] == "weave:///anim-mina/slide-comprehension-plain-ocr/test_file"
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call format
+            end_call = mock_results.end_calls[1]
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
+
             # Test with tags
             empty!(mock_results.file_calls)
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+
             result = @wfile "test_file_tags" test_file :config :test
             @test length(mock_results.file_calls) == 1
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
+            # Verify file call with tags
             file_call = mock_results.file_calls[1]
             @test file_call["name"] == "test_file_tags"
+            @test file_call["path"] == test_file
             @test file_call["tags"] == [:config, :test]
+
+            # Verify start_call format with tags
+            start_call = mock_results.start_calls[1]
+            @test start_call["op_name"] == "weave:///anim-mina/slide-comprehension-plain-ocr/test_file_tags"
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call format with tags
+            end_call = mock_results.end_calls[1]
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
         finally
             rm(test_file, force=true)
         end
@@ -368,6 +958,8 @@ end
     @testset "File Name Handling" begin
         # Reset mock results
         empty!(mock_results.file_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Create a temporary test file
         test_file = tempname()
@@ -377,19 +969,70 @@ end
             # Test without explicit name (should use basename)
             result = @wfile nothing test_file :test
             @test length(mock_results.file_calls) == 1
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
+            # Verify file call
             file_call = mock_results.file_calls[1]
             @test file_call["name"] == basename(test_file)
             @test file_call["tags"] == [:test]
+
+            # Verify start_call format
+            start_call = mock_results.start_calls[1]
+            verify_op_name(start_call["op_name"], basename(test_file))
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test haskey(start_call["attributes"], "source")
+            @test haskey(start_call["attributes"], "os")
+            @test haskey(start_call["attributes"], "arch")
+            @test haskey(start_call["attributes"]["weave"], "julia_version")
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call format
+            end_call = mock_results.end_calls[1]
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
 
             # Test with just file path (should use basename)
             empty!(mock_results.file_calls)
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+
             result = @wfile test_file :test
             @test length(mock_results.file_calls) == 1
+            @test length(mock_results.start_calls) == 1
+            @test length(mock_results.end_calls) == 1
 
+            # Verify file call
             file_call = mock_results.file_calls[1]
             @test file_call["name"] == basename(test_file)
             @test file_call["tags"] == [:test]
+
+            # Verify start_call format
+            start_call = mock_results.start_calls[1]
+            @test start_call["op_name"] == "weave:///anim-mina/slide-comprehension-plain-ocr/$(basename(test_file))"
+            @test haskey(start_call, "project_id")
+            @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test haskey(start_call, "attributes")
+            @test haskey(start_call["attributes"], "weave")
+            @test haskey(start_call["attributes"]["weave"], "client_version")
+            @test start_call["attributes"]["source"] == "julia-client"
+            @test !isempty(start_call["attributes"]["os"])  # Verify OS string is not empty
+            @test !isempty(start_call["attributes"]["arch"])  # Verify architecture string is not empty
+            @test occursin("julia", lowercase(start_call["attributes"]["weave"]["julia_version"]))  # Verify Julia version string
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", start_call["started_at"]) !== nothing
+
+            # Verify end_call format
+            end_call = mock_results.end_calls[1]
+            @test end_call["id"] == start_call["id"]
+            @test haskey(end_call, "project_id")
+            @test end_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+            @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
         finally
             rm(test_file, force=true)
         end
@@ -398,17 +1041,241 @@ end
     @testset "File Error Handling" begin
         # Reset mock results
         empty!(mock_results.file_calls)
+        empty!(mock_results.start_calls)
+        empty!(mock_results.end_calls)
 
         # Test with non-existent file
         non_existent = tempname()
-        @test_throws ArgumentError @wfile "error" non_existent
+        @test_throws HTTP.StatusError @wfile "error" non_existent
+
+        # Verify no API calls were made
+        @test isempty(mock_results.file_calls)
+        @test isempty(mock_results.start_calls)
+        @test isempty(mock_results.end_calls)
 
         # Test with missing arguments
         @test try
             eval(:(WeaveLoggers.@wfile))
             false
         catch e
-            e isa LoadError && e.error isa ArgumentError
+            e isa LoadError && e.error isa HTTP.StatusError
         end
+
+        # Verify no API calls were made
+        @test isempty(mock_results.file_calls)
+        @test isempty(mock_results.start_calls)
+        @test isempty(mock_results.end_calls)
+    end
+
+    @testset "API Operations" begin
+        @testset "update_call Error Propagation" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Create a call first to get a valid ID
+            result = @w sqrt(16)
+            @test result == 4.0
+            @test length(mock_results.start_calls) == 1
+            call_id = mock_results.start_calls[1]["id"]
+
+            # Enable error simulation for update operation
+            TestUtils.MockAPI.set_update_error(true)
+            try
+                # Test that update call fails with appropriate error
+                @test_throws HTTP.StatusError WeaveLoggers.Calls.update_call(
+                    call_id,
+                    Dict("test" => "value")
+                )
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Update failed")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])
+                @test !isempty(error_call["attributes"]["arch"])
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))
+            finally
+                TestUtils.MockAPI.set_update_error(false)
+            end
+        end
+
+        @testset "delete_call Error Handling" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Create a call first to get a valid ID
+            result = @w sqrt(16)
+            @test result == 4.0
+            @test length(mock_results.start_calls) == 1
+            call_id = mock_results.start_calls[1]["id"]
+
+            # Enable error simulation for delete operation
+            TestUtils.MockAPI.set_delete_error(true)
+            try
+                # Test that delete call fails with appropriate error
+                @test_throws HTTP.StatusError WeaveLoggers.Calls.delete_call(call_id)
+
+                # Verify error was recorded with metadata
+                @test length(mock_results.error_calls) == 1
+                error_call = mock_results.error_calls[1]
+                @test error_call["status_code"] == 400
+                @test contains(error_call["detail"], "Delete failed")
+                @test haskey(error_call, "attributes")
+                @test haskey(error_call["attributes"], "weave")
+                @test haskey(error_call["attributes"]["weave"], "client_version")
+                @test error_call["attributes"]["source"] == "julia-client"
+                @test !isempty(error_call["attributes"]["os"])
+                @test !isempty(error_call["attributes"]["arch"])
+                @test occursin("julia", lowercase(error_call["attributes"]["weave"]["julia_version"]))
+            finally
+                TestUtils.MockAPI.set_delete_error(false)
+            end
+        end
+
+        @testset "read_call Query Parameters" begin
+            # Reset mock results
+            empty!(mock_results.start_calls)
+            empty!(mock_results.end_calls)
+            empty!(mock_results.error_calls)
+
+            # Create a call first to get a valid ID
+            result = @w sqrt(16)
+            @test result == 4.0
+            @test length(mock_results.start_calls) == 1
+            call_id = mock_results.start_calls[1]["id"]
+
+            # Test read call with query parameters
+            try
+                response = WeaveLoggers.Calls.read_call(
+                    call_id,
+                    Dict("include_metadata" => true)
+                )
+
+                # Verify response format
+                @test haskey(response, "id")
+                @test response["id"] == call_id
+                @test haskey(response, "attributes")
+                @test haskey(response["attributes"], "weave")
+                @test haskey(response["attributes"]["weave"], "client_version")
+                @test response["attributes"]["source"] == "julia-client"
+                @test !isempty(response["attributes"]["os"])
+                @test !isempty(response["attributes"]["arch"])
+                @test occursin("julia", lowercase(response["attributes"]["weave"]["julia_version"]))
+            catch e
+                if e isa HTTP.StatusError
+                    # Verify error contains proper metadata
+                    error_data = JSON.parse(String(e.response.body))
+                    @test haskey(error_data, "attributes")
+                    @test haskey(error_data["attributes"], "weave")
+                    @test haskey(error_data["attributes"]["weave"], "client_version")
+                    @test error_data["attributes"]["source"] == "julia-client"
+                    @test !isempty(error_data["attributes"]["os"])
+                    @test !isempty(error_data["attributes"]["arch"])
+                    rethrow(e)
+                else
+                    rethrow(e)
+                end
+            end
+        end
+    end
+end
+
+@testset "Mock API Infrastructure" begin
+    # Test mock_results tracking
+    empty!(mock_results.start_calls)
+    empty!(mock_results.end_calls)
+    empty!(mock_results.error_calls)
+
+    # Test successful call tracking
+    result = @w "tracking_test" sum([1,2,3])
+    @test length(mock_results.start_calls) == 1
+    @test length(mock_results.end_calls) == 1
+    @test isempty(mock_results.error_calls)
+
+    # Verify start_call format
+    start_call = mock_results.start_calls[1]
+    verify_op_name(start_call["op_name"], "tracking_test")
+    @test haskey(start_call, "project_id")
+    @test start_call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+    @test haskey(start_call, "attributes")
+    @test haskey(start_call["attributes"], "weave")
+    @test haskey(start_call["attributes"]["weave"], "client_version")
+    @test start_call["attributes"]["source"] == "julia-client"
+
+    # Test error state management
+    TestUtils.MockAPI.set_auth_error(true)
+    try
+        @test_throws HTTP.StatusError @w "error_test" sum([1,2,3])
+        @test length(mock_results.error_calls) == 1
+        error_call = mock_results.error_calls[1]
+        @test error_call["status_code"] == 401
+    finally
+        TestUtils.MockAPI.set_auth_error(false)
+    end
+
+    # Verify error state reset
+    empty!(mock_results.error_calls)
+    result = @w "post_error_test" sum([1,2,3])
+    @test length(mock_results.start_calls) == 3  # Including previous calls
+    @test length(mock_results.end_calls) == 3    # Including previous calls
+    @test isempty(mock_results.error_calls)      # Should be empty after reset
+end
+
+@testset "Integration Tests" begin
+    # Test complete call lifecycle
+    empty!(mock_results.start_calls)
+    empty!(mock_results.end_calls)
+    empty!(mock_results.error_calls)
+
+    # Execute a chain of operations
+    result = @w "parent_op" begin
+        x = @w "child_op1" sum([1,2,3])
+        y = @w "child_op2" x * 2
+        @w "child_op3" y + 1
+    end
+
+    # Verify call chain
+    @test length(mock_results.start_calls) == 4  # parent + 3 children
+    @test length(mock_results.end_calls) == 4    # parent + 3 children
+
+    # Verify trace_id propagation
+    parent_call = mock_results.start_calls[1]
+    @test haskey(parent_call, "trace_id")
+    trace_id = parent_call["trace_id"]
+
+    # Verify all calls in chain have same trace_id
+    for call in mock_results.start_calls[2:end]
+        @test call["trace_id"] == trace_id
+    end
+
+    # Verify metadata consistency
+    for call in mock_results.start_calls
+        @test haskey(call, "project_id")
+        @test call["project_id"] == "anim-mina/slide-comprehension-plain-ocr"
+        @test haskey(call, "attributes")
+        @test haskey(call["attributes"], "weave")
+        @test haskey(call["attributes"]["weave"], "client_version")
+        @test call["attributes"]["source"] == "julia-client"
+        @test !isempty(call["attributes"]["os"])
+        @test !isempty(call["attributes"]["arch"])
+        @test occursin("julia", lowercase(call["attributes"]["weave"]["julia_version"]))
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", call["started_at"]) !== nothing
+    end
+
+    # Verify end calls match start calls
+    for (start_call, end_call) in zip(mock_results.start_calls, mock_results.end_calls)
+        @test end_call["id"] == start_call["id"]
+        @test end_call["trace_id"] == start_call["trace_id"]
+        @test haskey(end_call, "ended_at")
+        @test match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", end_call["ended_at"]) !== nothing
     end
 end
