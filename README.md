@@ -5,14 +5,11 @@
 
 # WeaveLoggers.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.
-github.io/WeaveLoggers.jl/stable/) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)]
-(https://svilupp.github.io/WeaveLoggers.jl/dev/) [![Build Status](https://github.com/svilupp/
-WeaveLoggers.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/
-WeaveLoggers.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Coverage](https://codecov.io/gh/
-svilupp/WeaveLoggers.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/WeaveLoggers.
-jl) [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://
-github.com/JuliaTesting/Aqua.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/WeaveLoggers.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/WeaveLoggers.jl/dev/)
+[![Build Status](https://github.com/svilupp/WeaveLoggers.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/WeaveLoggers.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/svilupp/WeaveLoggers.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/WeaveLoggers.jl)
+[![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 WeaveLoggers.jl is an experimental Julia package for interacting with the Weights & Biases Weave service API (unofficial). It provides a comprehensive set of functions for managing calls, objects, tables, and files through a unified interface.
 
