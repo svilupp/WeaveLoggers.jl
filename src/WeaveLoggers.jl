@@ -13,6 +13,7 @@ global PROJECT_ID::String = "anim-mina/slide-comprehension-plain-ocr"  # Update 
 global POSTPROCESS_INPUTS::Vector{Function} = Function[]
 global PREPROCESS_INPUTS::Vector{Function} = Function[]
 global WEAVE_SDK_VERSION::String = string(pkgversion(WeaveLoggers))  # Add SDK version constant
+export WANDB_API_KEY, PROJECT_ID, POSTPROCESS_INPUTS, PREPROCESS_INPUTS, WEAVE_SDK_VERSION
 
 # API Base URLs
 const WEAVE_API_BASE_URL = "https://trace.wandb.ai"
@@ -24,29 +25,24 @@ include("utils.jl")
 export weave_api
 include("core_api.jl")
 
-# Include API modules
 include("api/calls.jl")
-include("api/objects.jl")
-include("api/tables.jl")
-include("api/files.jl")
-include("api/macros.jl")  # Include the new macros module
-
-# Re-export API functions
 using .Calls: start_call, end_call, update_call, delete_call, read_call
-using .Objects: create_object, read_object
-using .Tables: create_table, update_table, query_table
-using .Files: create_file, get_file_content
-using .Macros: @w, @wtable, @wfile  # Export all macros
-
-# Export core functionality
-export weave_api, format_iso8601, get_system_metadata
-export WANDB_API_KEY, PROJECT_ID, POSTPROCESS_INPUTS, PREPROCESS_INPUTS, WEAVE_SDK_VERSION
-
-# Re-export API functions
 export start_call, end_call, update_call, delete_call, read_call
+
+include("api/objects.jl")
+using .Objects: create_object, read_object
 export create_object, read_object
+
+include("api/tables.jl")
+using .Tables: create_table, update_table, query_table
 export create_table, update_table, query_table
+
+include("api/files.jl")
+using .Files: create_file, get_file_content
 export create_file, get_file_content
+
+include("macros.jl")  # Include the new macros module
+using .Macros: @w, @wtable, @wfile  # Export all macros
 export @w, @wtable, @wfile  # Export all macros
 
 end # module
